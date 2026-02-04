@@ -11,10 +11,19 @@ let firebaseInitialized = false
 // Inicializar Firebase Admin apenas se configurado
 if (firebaseConfigured && !admin.apps.length) {
   try {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    // Processar chave privada: substituir \n literal por quebras de linha reais
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || ''
+    
+    // Se a chave contém \n literal (como string), substituir por quebra de linha real
+    if (privateKey.includes('\\n')) {
+      privateKey = privateKey.replace(/\\n/g, '\n')
+    }
     
     // Validar se a chave tem formato PEM válido
-    if (privateKey && privateKey.includes('BEGIN PRIVATE KEY') && privateKey.includes('END PRIVATE KEY')) {
+    const hasBegin = privateKey.includes('BEGIN PRIVATE KEY')
+    const hasEnd = privateKey.includes('END PRIVATE KEY')
+    
+    if (hasBegin && hasEnd) {
       const serviceAccount = {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID,
@@ -34,6 +43,9 @@ if (firebaseConfigured && !admin.apps.length) {
       console.log('✅ Firebase Admin inicializado com sucesso')
     } else {
       console.warn('⚠️ Firebase: Chave privada com formato inválido - notificações push desabilitadas')
+      console.warn(`   - BEGIN PRIVATE KEY encontrado: ${hasBegin}`)
+      console.warn(`   - END PRIVATE KEY encontrado: ${hasEnd}`)
+      console.warn(`   - Tamanho da chave: ${privateKey.length} caracteres`)
     }
   } catch (error) {
     console.error('❌ Erro ao inicializar Firebase:', error instanceof Error ? error.message : error)
