@@ -108,8 +108,8 @@ export async function enviarNotificacao(params: {
       },
       webpush: {
         notification: {
-          icon: '/logo-192.png',
-          badge: '/logo-72.png',
+          icon: '/logo.svg',
+          badge: '/logo.svg',
           requireInteraction: true
         },
         fcmOptions: {
