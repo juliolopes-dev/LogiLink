@@ -1,4 +1,5 @@
 import { FiHome, FiPackage, FiTrendingUp, FiShoppingCart, FiFileText, FiSettings, FiLayers } from 'react-icons/fi'
+import { Logo } from './Logo'
 
 type Page = 'dashboard' | 'produtos' | 'drp' | 'combinados' | 'sugestoes' | 'relatorios' | 'configuracoes'
 
@@ -21,15 +22,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen fixed left-0 top-0">
       {/* Logo/Header */}
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="bg-secondary p-2 rounded-md">
-            <FiPackage className="text-accent text-xl" />
-          </div>
-          <div>
-            <h1 className="text-base font-semibold text-slate-900">LogiLink</h1>
-            <p className="text-[10px] text-slate-500">SISTEMA DRP/COMPRAS</p>
-          </div>
-        </div>
+        <Logo />
       </div>
 
       {/* Menu Items */}
