@@ -1,6 +1,6 @@
 # Status do Projeto - DRP Bezerra
 
-**Última Atualização:** 01/02/2026 - 13:26
+**Última Atualização:** 04/02/2026 - 15:07
 
 ## 1. Visão Geral
 - **Stack**: React + Vite + TypeScript + Tailwind + Recharts (Frontend) | Fastify + TypeScript + Prisma (Backend)
@@ -22,23 +22,20 @@
 - [x] Otimização de carregamento de períodos
 
 ## 3. Última Sessão
-- **Data**: 2026-02-01
-- **Mudanças Principais**: 
-  - ✅ **Paginação Padronizada**: Todas as páginas com paginação fixa no rodapé (sem scroll)
-  - ✅ **Filtros de Período Otimizados**: Carregamento paralelo de 30d/60d/90d, troca instantânea
-  - ✅ **Sistema de Cache**: Implementado cache de 5 minutos para evitar requisições desnecessárias
-  - ✅ **Modal de Detalhes**: Filtro de período movido para "Vendas por Filial"
-  - ✅ **Gráfico de Histórico**: Sempre usa dados de 90 dias (12 meses completos)
-  - ✅ **Design System**: Atualizado com regras de paginação e filtros de período
-  - ✅ **Correções**: URL do endpoint `/api/produtos` corrigida
+- **Data**: 2026-02-04
+- **Mudanças Principais**:
+  - ✅ **Deploy Easypanel**: Dockerfile único (backend + frontend), `.dockerignore`, `.env.example`, `DEPLOY.md`
+  - ✅ **DRP por NF**: Fallback de distribuição por prioridade quando não há estoque mínimo
+  - ✅ **Frontend Build**: Correção de tipos (`usou_estoque_minimo`) e cálculo de máximos em SKUs
+  - ✅ **Prisma**: Remoção de referência inválida a `FatoMovimentacao` no schema
+  - ✅ **Documentação**: `CALCULO_DRP_NF.md` atualizado com nova lógica
 - **Arquivos Criados**:
-  - `frontend/src/utils/cache.ts` - Sistema de cache global
-  - `docs/SISTEMA_CACHE.md` - Documentação do sistema de cache
+  - `Dockerfile`, `.dockerignore`, `.env.example`, `DEPLOY.md`
 - **Arquivos Modificados**:
-  - `frontend/src/pages/SKUs.tsx` - Otimizações de carregamento e filtros
-  - `frontend/src/pages/GerenciarCombinados.tsx` - Paginação padronizada
-  - `frontend/src/pages/Produtos.tsx` - Paginação padronizada
-  - `frontend/.design-engineer/system.md` - Novas regras de design
+  - `frontend/src/pages/AnaliseDRP.tsx` - badge Est.Mín com tipo corrigido
+  - `frontend/src/pages/SKUs.tsx` - cálculo de máximos sem erros de tipo
+  - `backend/prisma/schema.prisma` - remove relação inexistente
+  - `docs/DRP/CALCULO_DRP_NF.md` - documentação consolidada
 
 ## 4. Funcionalidades Implementadas
 

@@ -59,6 +59,7 @@ interface FilialAnalise {
   tem_combinado_estoque?: boolean
   estoque_combinado?: number
   necessidade_reduzida_por_combinado?: number
+  usou_estoque_minimo?: boolean
   combinados_em_estoque?: Array<{
     cod_produto: string
     descricao: string
@@ -2360,7 +2361,7 @@ export default function AnaliseDRP() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dadosModalCombinados.combinados.map((comb, index) => {
+                    {dadosModalCombinados.combinados.map((comb) => {
                       const total = comb.estoque_petrolina + comb.estoque_juazeiro + comb.estoque_salgueiro + comb.estoque_bonfim + comb.estoque_picos
                       return (
                         <tr key={comb.cod_produto} className="border-b border-slate-100 hover:bg-amber-50">

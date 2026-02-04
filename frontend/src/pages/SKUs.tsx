@@ -835,11 +835,11 @@ export default function SKUs() {
                       </thead>
                       <tbody>
                         {dadosAnalise.map((produto: any, idx: number) => {
-                          const vendasPorFilial = new Map(
-                            produto.vendas_por_filial.map((v: any) => [v.cod_filial, v.total_vendas])
+                          const vendasPorFilial: Map<string, number> = new Map<string, number>(
+                            produto.vendas_por_filial.map((v: any) => [v.cod_filial as string, Number(v.total_vendas) || 0])
                           )
                           const totalProduto = produto.vendas_por_filial.reduce(
-                            (acc: number, v: any) => acc + parseFloat(v.total_vendas || 0), 0
+                            (acc: number, v: any) => acc + (Number(v.total_vendas) || 0), 0
                           )
                           
                           return (
@@ -850,7 +850,9 @@ export default function SKUs() {
                               </td>
                               {FILIAIS.map(filial => {
                                 const vendas = vendasPorFilial.get(filial.cod) || 0
-                                const isMax = vendas > 0 && vendas === Math.max(...Array.from(vendasPorFilial.values()))
+                                const valoresVendas: number[] = Array.from(vendasPorFilial.values())
+                                const maxVendas = valoresVendas.length > 0 ? Math.max(...valoresVendas) : 0
+                                const isMax = vendas > 0 && vendas === maxVendas
                                 
                                 return (
                                   <td 
