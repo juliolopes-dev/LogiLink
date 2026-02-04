@@ -1225,7 +1225,7 @@ export default function AnaliseDRP() {
                   setExportandoXLSX(true)
                   
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/nf-entrada/cd/exportar-drp-xlsx`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/nf-entrada/cd/exportar-drp-xlsx`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -1279,7 +1279,7 @@ export default function AnaliseDRP() {
                 setPedidosGerados(null)
                 
                 try {
-                  const response = await fetch(`${import.meta.env.VITE_API_URL}/nf-entrada/cd/gerar-pedidos`, {
+                  const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/nf-entrada/cd/gerar-pedidos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1710,7 +1710,7 @@ export default function AnaliseDRP() {
                   setExportandoXLSX(true)
                   
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/drp/exportar-xlsx`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/drp/exportar-xlsx`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -1765,7 +1765,7 @@ export default function AnaliseDRP() {
                   setGerandoPedidos(true)
                   
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/drp/gerar-pedidos`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/drp/gerar-pedidos`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
