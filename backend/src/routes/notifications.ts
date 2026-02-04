@@ -1,26 +1,46 @@
 import { FastifyInstance } from 'fastify'
 import * as admin from 'firebase-admin'
 
-// Inicializar Firebase Admin usando variáveis de ambiente
-const serviceAccount = {
-  type: "service_account",
-  project_id: process.env.FIREBASE_PROJECT_ID || "logilink-9a32d",
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID || "1be76adfc661fc87c7040893051d9197a62475c1",
-  private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || "-----BEGIN PRIVATE KEY-----\nMIIEugIBADANBgkqhkiG9w0BAQEFAASCBKQwggSgAgEAAoIBAQDgoJIn8TD3IA+j\nbWqxRdXlJU8Dg2+mcwNHEk7oUxbO9ejl/9NSSuDnmcrHe6mQGIjdhayBiZeiJaZH\nzPr1g/SD7nlHYYGSiWGt7p83GssWNBFMGx6spj5sJrCx/GMUvoOAKj91/gEm0Zvs\n7vxF/GgrJ8d04+OoexY/4qWu9R2D7YctMaZMc2bGOh9LCZdI08W3lZAMkFJP8Nkd\nJsRUdEY14jV14BY7wFX0f7zGldKU6Cx9/kYSZwi6bd/zM9BTW7YbfGoyMrSuE/gW\nkXo+2jutZhTW1UYWUKiZnfb0vSD09dKIR3j4a70NT7rIDYew9kYbV/6nP5JBvoTO\nsYIneJTXAgMBAAECggEAEJDxtoMR5WfhP2BLxL8twzSOhefPotWgoZaMEz5C1F32\ndd/5fybekgtu6moIW1mJM9fZR8RqAR9dtWCSBuwFwHp59KBlpJ+qgIq0sKUH4p9R\nwex4xVWNYlSIJi2YRmi2h2FA75FywaDRKxbaVsmtX7a9/bTrjqVlQq49zJAZ7nzB\nYIyQ//aB+TL1HQ3urEUTsn9LC/wTy7h0V/hiWpCgeyAezw62LcJoK4EdSmt/6igK\n6mp6sAS2kDjMY79s0PPIbQi6xGsrK9OKTdyvCJnZRuzY9CruTbHMxVF4iFxNN7qc\n37roBvQY60KZAdOG0wtKJPUbluj6DYfRSgwoyIkcAQKBgQD1ipsrYoBUxj4nse2X\nsC1H46EYnkhaczPgagfP4RpCLVR6DITFxgNjGQ0uHT0w+XrCBDuHW1NMuP1VCnzc\nRqvB0UZcyRSt87OGRAHThax4tFkDU2cXSRvE+9lJvycoBpw/RMfwfnb/diayOGYu\njcHhCV837qn+C33kHKHLbCqTgQKBgQDqMepduDAgEakl2qAS1GihKS1OFdb8msPj\nj8WjSt6M+uRaEbTd0U1WHoosT8Hfqma4hcNSdmuXTdB71oEcSIq8GmkNETu1bR2G\nTIGM4PZLp00OooJ2GGmDH9/EfN5Yeq6kKL6cOOhjgzNCYIV8hghDuWHmyClWSTiR\noAwIZyp0VwJ/YdTX/nFAsIZMPYSnJckMQZhwl155dZBxGvkkI6+MxtFI11gljqdW\nsiVJGxaLSvgb8TG+hi/dALS0Oy3ykdGWnaLEZjO4CZcP8G8oSx73mSBCVxDkAmMe\nrV2rNbbz4v6/QnYlM60vvJlW0aunCuVwWjlhtudg09fAUSMXU/XFAQKBgAX0EuMj\nBYYrLMOblSolYCuIonAzue1d+dDVHM8T3ihzUE7B2HkzEuY3jIen12PaLxZNwDNe\nc0m7XqtnPoz7gxtZCIaeg4gPKAr78ucj6N7vd9QBaZOa90OwEb4q9nQFWl8t8fqC\nr9WnxivPzFToC1m9YrG9MN/SqK97BBNKnBetAoGAEHsY3QRFotibhnjtK+IKxsYF\nd45e7bQiH1+7KJG/+JVxmv65rFybioMlULAM1N4LFFgc/hPUXXinNREnVn/koHY7\n8o1iX0tWwDrv5F9stIxjF9tc5MZ8Lnu12YVl+uWAKPDh4AUsd6cVm/bXlaI/Y39b\nlHKHu4s5wWaHZ/xeQVk=\n-----END PRIVATE KEY-----\n",
-  client_email: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@logilink-9a32d.iam.gserviceaccount.com",
-  client_id: process.env.FIREBASE_CLIENT_ID || "107358477568487673842",
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40logilink-9a32d.iam.gserviceaccount.com",
-  universe_domain: "googleapis.com"
-}
+// Verificar se Firebase está configurado
+const firebaseConfigured = process.env.FIREBASE_PROJECT_ID && 
+                           process.env.FIREBASE_PRIVATE_KEY && 
+                           process.env.FIREBASE_CLIENT_EMAIL
 
-// Inicializar apenas uma vez
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount)
-  })
+let firebaseInitialized = false
+
+// Inicializar Firebase Admin apenas se configurado
+if (firebaseConfigured && !admin.apps.length) {
+  try {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    
+    // Validar se a chave tem formato PEM válido
+    if (privateKey && privateKey.includes('BEGIN PRIVATE KEY') && privateKey.includes('END PRIVATE KEY')) {
+      const serviceAccount = {
+        type: "service_account",
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key: privateKey,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        universe_domain: "googleapis.com"
+      }
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount as admin.ServiceAccount)
+      })
+      
+      firebaseInitialized = true
+      console.log('✅ Firebase Admin inicializado com sucesso')
+    } else {
+      console.warn('⚠️ Firebase: Chave privada com formato inválido - notificações push desabilitadas')
+    }
+  } catch (error) {
+    console.error('❌ Erro ao inicializar Firebase:', error instanceof Error ? error.message : error)
+    console.warn('⚠️ Notificações push desabilitadas')
+  }
+} else {
+  console.warn('⚠️ Firebase não configurado - notificações push desabilitadas')
 }
 
 // Armazenar tokens registrados (em produção, usar banco de dados)
@@ -50,6 +70,13 @@ export default async function notificationsRoutes(fastify: FastifyInstance) {
   // POST /api/notifications/send - Enviar notificação para todos os tokens
   fastify.post('/notifications/send', async (request, reply) => {
     try {
+      if (!firebaseInitialized) {
+        return reply.status(503).send({ 
+          success: false, 
+          error: 'Notificações push não disponíveis - Firebase não configurado' 
+        })
+      }
+
       const { title, body, data, url } = request.body as {
         title: string
         body: string
