@@ -24,20 +24,29 @@
 ## 3. Última Sessão
 - **Data**: 2026-02-04
 - **Mudanças Principais**:
+  - ✅ **Notificações Push**: Implementação completa com Firebase (envio automático ao calcular DRP)
+  - ✅ **Configuração Easypanel**: Solução para variáveis de ambiente longas (JSON completo) e documentação
+  - ✅ **UI/UX**: Nova logo moderna criada e integrada (SVG), favicon atualizado
   - ✅ **Deploy Easypanel**: Dockerfile único (backend + frontend), `.dockerignore`, `.env.example`, `DEPLOY.md`
   - ✅ **DRP por NF**: Fallback de distribuição por prioridade quando não há estoque mínimo
-  - ✅ **Frontend Build**: Correção de tipos (`usou_estoque_minimo`) e cálculo de máximos em SKUs
-  - ✅ **Prisma**: Remoção de referência inválida a `FatoMovimentacao` no schema
-  - ✅ **Documentação**: `CALCULO_DRP_NF.md` atualizado com nova lógica
 - **Arquivos Criados**:
+  - `frontend/src/components/Logo.tsx`, `frontend/public/logo.svg`
+  - `FIREBASE_EASYPANEL.md`
   - `Dockerfile`, `.dockerignore`, `.env.example`, `DEPLOY.md`
 - **Arquivos Modificados**:
-  - `frontend/src/pages/AnaliseDRP.tsx` - badge Est.Mín com tipo corrigido
-  - `frontend/src/pages/SKUs.tsx` - cálculo de máximos sem erros de tipo
-  - `backend/prisma/schema.prisma` - remove relação inexistente
-  - `docs/DRP/CALCULO_DRP_NF.md` - documentação consolidada
+  - `backend/src/routes/notifications.ts` - função de envio e suporte a JSON completo
+  - `backend/src/routes/nf-entrada.ts` - integração de notificação no DRP
+  - `frontend/src/components/Sidebar.tsx` - nova logo
+  - `frontend/index.html` - novo favicon
 
 ## 4. Funcionalidades Implementadas
+
+### 4.0 Notificações e Sistema (Novo)
+- Sistema de notificações push via Firebase Cloud Messaging
+- Envio automático ao finalizar cálculos demorados (DRP)
+- Suporte a múltiplos dispositivos por usuário
+- Configuração flexível para deploy (JSON ou variáveis separadas)
+- Identidade visual renovada com nova logo vetorial (SVG)
 
 ### 4.1 Dashboard
 - Resumo de estoque por filial
