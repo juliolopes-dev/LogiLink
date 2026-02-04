@@ -45,7 +45,7 @@ export function Logo({ className = "", showText = true }: LogoProps) {
       {showText && (
         <div className="flex flex-col justify-center">
           <h1 className="text-lg font-bold text-slate-900 leading-none tracking-tight">LogiLink</h1>
-          <span className="text-[10px] font-bold text-accent uppercase tracking-wider mt-0.5">Sistema DRP</span>
+          <span className="text-[10px] font-bold text-accent uppercase tracking-wider mt-0.5">DRP & Compras</span>
         </div>
       )}
     </div>
