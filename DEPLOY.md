@@ -78,14 +78,21 @@ DB_AUDITORIA_PASSWORD=sua-senha
 DB_AUDITORIA_DATABASE=auditoria
 DB_AUDITORIA_SCHEMA=auditoria_integracao
 
-# Firebase (Notificações Push)
-FIREBASE_PROJECT_ID=seu-project-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nSua chave privada\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@seu-project.iam.gserviceaccount.com
+# Firebase (Notificações Push) - OPCIONAL
+# ⚠️ Configure como Environment Variables (não Build Arguments)
+# ⚠️ Use quebras de linha REAIS na chave privada (não \n)
+# 📖 Veja instruções detalhadas em: FIREBASE_EASYPANEL.md
+FIREBASE_PROJECT_ID=logilink-9a32d
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----
+(cole a chave aqui com quebras de linha reais)
+-----END PRIVATE KEY-----
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@logilink-9a32d.iam.gserviceaccount.com
 
 # Timezone
 TZ=America/Sao_Paulo
 ```
+
+> **📖 Configuração Firebase:** Para instruções detalhadas sobre como configurar o Firebase corretamente no Easypanel, consulte [FIREBASE_EASYPANEL.md](./FIREBASE_EASYPANEL.md)
 
 #### **Resources**
 - **CPU:** 0.5 - 1 vCPU (ajuste conforme necessário)
