@@ -8,6 +8,7 @@ import {
 import poolAuditoria from '../lib/database-auditoria.js'
 import * as XLSX from 'xlsx'
 import { calcularFrequenciaSaida } from '../utils/drp/frequencia-saida'
+import { enviarNotificacao } from './notifications.js'
 
 const CD_FILIAL = '04'
 
@@ -657,6 +658,23 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
           filiais: analisePorFilial
         })
       }
+
+      // Enviar notificação push após cálculo concluído
+      enviarNotificacao({
+        title: '✅ DRP Calculado',
+        body: `NF ${numero_nota}: ${produtos.length} produto(s) processado(s)`,
+        data: {
+          tipo: 'drp_calculado',
+          numero_nota: numero_nota,
+          total_produtos: produtos.length.toString(),
+          necessidade_total: necessidadeTotal.toFixed(0),
+          deficit_total: deficitTotal.toFixed(0)
+        },
+        url: `/drp/nf/${numero_nota}`
+      }).catch(err => {
+        console.error('Erro ao enviar notificação:', err)
+        // Não bloqueia a resposta se notificação falhar
+      })
 
       return reply.send({
         success: true,

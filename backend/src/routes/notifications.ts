@@ -74,6 +74,68 @@ if (!admin.apps.length) {
 // Armazenar tokens registrados (em produção, usar banco de dados)
 const registeredTokens: Set<string> = new Set()
 
+// Função auxiliar para enviar notificações (pode ser chamada de outros módulos)
+export async function enviarNotificacao(params: {
+  title: string
+  body: string
+  data?: Record<string, string>
+  url?: string
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    if (!firebaseInitialized) {
+      console.warn('⚠️ Tentativa de enviar notificação, mas Firebase não está inicializado')
+      return { success: false, error: 'Firebase não inicializado' }
+    }
+
+    const tokens = Array.from(registeredTokens)
+    
+    if (tokens.length === 0) {
+      console.warn('⚠️ Nenhum dispositivo registrado para receber notificações')
+      return { success: false, error: 'Nenhum dispositivo registrado' }
+    }
+
+    const { title, body, data, url } = params
+
+    const message: admin.messaging.MulticastMessage = {
+      notification: {
+        title,
+        body
+      },
+      data: {
+        ...data,
+        url: url || '/',
+        timestamp: Date.now().toString()
+      },
+      webpush: {
+        notification: {
+          icon: '/logo-192.png',
+          badge: '/logo-72.png',
+          requireInteraction: true
+        },
+        fcmOptions: {
+          link: url || '/'
+        }
+      },
+      tokens
+    }
+
+    const response = await admin.messaging().sendEachForMulticast(message)
+    
+    console.log(`📤 Notificação enviada: ${response.successCount}/${tokens.length} dispositivos`)
+    
+    return {
+      success: true,
+      message: `Notificação enviada para ${response.successCount} dispositivo(s)`
+    }
+  } catch (error) {
+    console.error('❌ Erro ao enviar notificação:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    }
+  }
+}
+
 export default async function notificationsRoutes(fastify: FastifyInstance) {
   
   // POST /api/notifications/register - Registrar token FCM
