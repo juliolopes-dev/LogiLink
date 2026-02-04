@@ -17,13 +17,11 @@ const messaging = firebase.messaging()
 
 // Handler para mensagens em segundo plano
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Mensagem em segundo plano:', payload)
-
   const notificationTitle = payload.notification?.title || 'LogiLink'
   const notificationOptions = {
     body: payload.notification?.body || 'Nova notificação',
-    icon: '/logo-192.png',
-    badge: '/logo-72.png',
+    icon: '/logo.svg',
+    badge: '/logo.svg',
     tag: payload.data?.tag || 'logilink-notification',
     data: payload.data,
     requireInteraction: true,
@@ -38,8 +36,6 @@ messaging.onBackgroundMessage((payload) => {
 
 // Handler para clique na notificação
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Clique na notificação:', event)
-  
   event.notification.close()
 
   if (event.action === 'dismiss') {
