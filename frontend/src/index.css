@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base */
+    --background: #f1f2f3;
+    --background-subtle: #e8e9ea;
+    --surface: #ffffff;
+    --border: #d1d5db;
+    --border-subtle: #e5e7eb;
+    
+    /* Text */
+    --text-primary: #252525;
+    --text-secondary: #4b5563;
+    --text-tertiary: #9ca3af;
+    
+    /* Accent - Amarelo Bezerra */
+    --accent: #f5ad00;
+    --accent-hover: #d99800;
+    --accent-subtle: #fef3cd;
+    --accent-text: #252525;
+    
+    /* Secondary - Cinza Escuro Bezerra */
+    --secondary: #252525;
+    --secondary-hover: #1a1a1a;
+  }
+
+  body {
+    font-family: 'Blinker', system-ui, -apple-system, sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* Button Base */
+  .btn {
+    @apply inline-flex items-center justify-center h-[32px] px-3 text-xs font-medium rounded-md transition-colors;
+  }
+  
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-accent-hover;
+  }
+  
+  .btn-secondary {
+    @apply bg-surface border border-border text-slate-700 hover:bg-background-subtle;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent text-slate-600 hover:bg-background-subtle;
+  }
+
+  /* Card */
+  .card {
+    @apply bg-surface border border-border rounded-lg p-3;
+  }
+
+  /* Input */
+  .input {
+    @apply h-[32px] px-2.5 text-xs border border-border rounded-md bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+  
+  .badge-success {
+    @apply bg-success-subtle text-success-text;
+  }
+  
+  .badge-warning {
+    @apply bg-warning-subtle text-warning-text;
+  }
+  
+  .badge-danger {
+    @apply bg-danger-subtle text-danger-text;
+  }
+  
+  .badge-info {
+    @apply bg-info-subtle text-info-text;
+  }
+
+  /* Table */
+  .table-header {
+    @apply bg-background-subtle text-xs font-semibold uppercase tracking-wider text-slate-500 px-4 py-3;
+  }
+  
+  .table-cell {
+    @apply text-sm px-4 py-3 border-b border-border-subtle;
+  }
+}
+
+/* Animações */
+@keyframes growUp {
+  from {
+    height: 0%;
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
