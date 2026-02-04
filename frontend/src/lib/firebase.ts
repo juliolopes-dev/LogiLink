@@ -58,7 +58,8 @@ export async function requestNotificationPermission(): Promise<string | null> {
 // Salvar token no servidor
 async function saveTokenToServer(token: string) {
   try {
-    await fetch('http://localhost:3333/api/notifications/register', {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    await fetch(`${apiUrl}/notifications/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token })
