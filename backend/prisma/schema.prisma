@@ -94,10 +94,9 @@ model DimFabricante {
 }
 
 model DimTipoMovimento {
-  cod_tipo_movimento String            @id @map("cod_tipo_movimento") @db.VarChar(2)
-  descricao          String?           @db.VarChar(100)
-  tipo               String?           @db.VarChar(1)
-  FatoMovimentacao   FatoMovimentacao[]
+  cod_tipo_movimento String  @id @map("cod_tipo_movimento") @db.VarChar(2)
+  descricao          String? @db.VarChar(100)
+  tipo               String? @db.VarChar(1)
 
   @@map("dim_tipo_movimento")
 }
