@@ -272,6 +272,21 @@ export default function AnaliseDRP() {
     tem_anterior: boolean
   } | null>(null)
 
+  // Cache de resultados do DRP (todas as páginas carregadas)
+  const [cacheDRP, setCacheDRP] = useState<{
+    filtros: {
+      periodo_dias: number
+      filial_origem: string
+      grupo: string
+      busca: string
+      filiais: string[]
+    }
+    paginas: Record<number, ProdutoAnalise[]>
+    paginacao: typeof paginacao
+    resumo: Resumo | null
+  } | null>(null)
+  const [usandoCache, setUsandoCache] = useState(false)
+
   // Buscar grupos para o filtro
   useEffect(() => {
     fetch('/api/drp/grupos')
@@ -375,12 +390,24 @@ export default function AnaliseDRP() {
     return () => clearInterval(intervalo)
   }, [etapaLoading, loading])
 
-  const calcularDRP = async () => {
+  // Limpar cache e resetar para nova consulta
+  const limparCache = () => {
+    setCacheDRP(null)
+    setUsandoCache(false)
+    setPaginaAtual(1)
+    setCalculado(false)
+    setProdutos([])
+    setResumo(null)
+    setPaginacao(null)
+  }
+
+  const calcularDRP = async (pagina: number = 1) => {
     setLoading(true)
     setCalculado(false)
     setTempoProcessamento(0)
     setInicioProcessamento(Date.now())
     setEtapaLoading('Carregando combinados...')
+    setUsandoCache(false)
 
     try {
       // Simular etapas de loading
@@ -400,7 +427,7 @@ export default function AnaliseDRP() {
             filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
           },
           paginacao: {
-            pagina: paginaAtual,
+            pagina: pagina,
             por_pagina: porPagina
           }
         })
@@ -412,7 +439,25 @@ export default function AnaliseDRP() {
         setResumo(data.resumo)
         setProdutos(data.produtos)
         setPaginacao(data.paginacao)
+        setPaginaAtual(pagina)
         setCalculado(true)
+
+        // Salvar no cache
+        setCacheDRP(prev => ({
+          filtros: {
+            periodo_dias: periodoDias,
+            filial_origem: filialOrigem,
+            grupo: grupoSelecionado,
+            busca: busca,
+            filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
+          },
+          paginas: {
+            ...(prev?.paginas || {}),
+            [pagina]: data.produtos
+          },
+          paginacao: data.paginacao,
+          resumo: data.resumo
+        }))
       } else {
         alert('Erro ao calcular DRP: ' + data.error)
       }
@@ -436,11 +481,22 @@ export default function AnaliseDRP() {
   // Funções de navegação de página
   const irParaPagina = async (novaPagina: number) => {
     if (!paginacao || novaPagina < 1 || novaPagina > paginacao.total_paginas) return
-    setPaginaAtual(novaPagina)
     
-    // Recalcular com nova página
+    // Verificar se a página está no cache
+    if (cacheDRP?.paginas[novaPagina]) {
+      // Usar cache - navegação instantânea
+      setPaginaAtual(novaPagina)
+      setProdutos(cacheDRP.paginas[novaPagina])
+      setPaginacao(prev => prev ? { ...prev, pagina_atual: novaPagina, tem_proxima: novaPagina < prev.total_paginas, tem_anterior: novaPagina > 1 } : null)
+      setUsandoCache(true)
+      return
+    }
+    
+    // Página não está no cache - buscar do servidor
+    setPaginaAtual(novaPagina)
     setLoading(true)
     setEtapaLoading('Carregando página...')
+    setUsandoCache(false)
     
     try {
       const response = await fetch('/api/drp/calcular', {
@@ -467,6 +523,15 @@ export default function AnaliseDRP() {
         setResumo(data.resumo)
         setProdutos(data.produtos)
         setPaginacao(data.paginacao)
+        
+        // Salvar no cache
+        setCacheDRP(prev => prev ? {
+          ...prev,
+          paginas: {
+            ...prev.paginas,
+            [novaPagina]: data.produtos
+          }
+        } : null)
       }
     } catch (error) {
       console.error('Erro ao carregar página:', error)
@@ -979,18 +1044,31 @@ export default function AnaliseDRP() {
           </div>
         </div>
 
-        <button
-          onClick={calcularDRP}
-          disabled={loading || filiaisSelecionadas.length === 0}
-          className="btn btn-primary w-full md:w-auto"
-        >
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <FiLoader className="animate-spin" />
-              Calculando...
-            </span>
-          ) : 'Calcular DRP'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => calcularDRP()}
+            disabled={loading || filiaisSelecionadas.length === 0}
+            className="btn btn-primary w-full md:w-auto"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <FiLoader className="animate-spin" />
+                Calculando...
+              </span>
+            ) : 'Calcular DRP'}
+          </button>
+          
+          {calculado && cacheDRP && (
+            <button
+              onClick={limparCache}
+              className="btn btn-outline w-full md:w-auto"
+              title="Limpar cache e fazer nova consulta"
+            >
+              <FiX className="mr-1" />
+              Nova Consulta
+            </button>
+          )}
+        </div>
         </div>
         )}
 
