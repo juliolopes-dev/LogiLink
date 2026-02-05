@@ -262,7 +262,7 @@ export default function AnaliseDRP() {
 
   // Estados para paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
-  const [porPagina, setPorPagina] = useState(100)
+  const porPagina = 100 // Fixo em 100 itens por página
   const [paginacao, setPaginacao] = useState<{
     pagina_atual: number
     por_pagina: number
@@ -285,7 +285,6 @@ export default function AnaliseDRP() {
     paginacao: typeof paginacao
     resumo: Resumo | null
   } | null>(null)
-  const [usandoCache, setUsandoCache] = useState(false)
 
   // Buscar grupos para o filtro
   useEffect(() => {
@@ -488,7 +487,6 @@ export default function AnaliseDRP() {
       setPaginaAtual(novaPagina)
       setProdutos(cacheDRP.paginas[novaPagina])
       setPaginacao(prev => prev ? { ...prev, pagina_atual: novaPagina, tem_proxima: novaPagina < prev.total_paginas, tem_anterior: novaPagina > 1 } : null)
-      setUsandoCache(true)
       return
     }
     
@@ -496,7 +494,6 @@ export default function AnaliseDRP() {
     setPaginaAtual(novaPagina)
     setLoading(true)
     setEtapaLoading('Carregando página...')
-    setUsandoCache(false)
     
     try {
       const response = await fetch('/api/drp/calcular', {
