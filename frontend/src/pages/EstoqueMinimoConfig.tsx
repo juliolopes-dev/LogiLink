@@ -45,16 +45,10 @@ export default function EstoqueMinimoConfig() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Configuração de Estoque Mínimo</h1>
-        <p className="text-gray-600 mt-2">
-          Configure e calcule o estoque mínimo dinâmico para todos os produtos
-        </p>
-      </div>
-
-      {/* Card de Informações */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <div className="h-full overflow-auto">
+      <div className="max-w-4xl space-y-4">
+        {/* Card de Informações */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
           <FiInfo className="text-blue-600 text-xl mt-0.5 flex-shrink-0" />
           <div>
@@ -179,7 +173,7 @@ export default function EstoqueMinimoConfig() {
       )}
 
       {/* Informações Adicionais */}
-      <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <h3 className="font-semibold text-gray-800 mb-3">Próximos Passos</h3>
         <ul className="text-sm text-gray-600 space-y-2">
           <li>• Após o cálculo inicial, o estoque mínimo será usado automaticamente no DRP</li>
@@ -187,6 +181,7 @@ export default function EstoqueMinimoConfig() {
           <li>• Recomenda-se recalcular todos os produtos mensalmente</li>
           <li>• Produtos com vendas muito baixas podem ter estoque mínimo = 1</li>
         </ul>
+      </div>
       </div>
     </div>
   )

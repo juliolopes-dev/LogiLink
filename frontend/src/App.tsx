@@ -7,7 +7,6 @@ import SKUs from './pages/SKUs'
 import AnaliseDRP from './pages/AnaliseDRP'
 import GerenciarCombinados from './pages/GerenciarCombinados'
 import Configuracoes from './pages/Configuracoes'
-import EstoqueMinimoConfig from './pages/EstoqueMinimoConfig'
 import NotificationManager from './components/NotificationManager'
 
 interface EstoqueResumo {
@@ -55,7 +54,7 @@ function formatNumber(value: string | number): string {
   return new Intl.NumberFormat('pt-BR').format(Math.round(num))
 }
 
-type Page = 'dashboard' | 'produtos' | 'drp' | 'combinados' | 'sugestoes' | 'relatorios' | 'configuracoes' | 'estoque-minimo'
+type Page = 'dashboard' | 'produtos' | 'drp' | 'combinados' | 'sugestoes' | 'relatorios' | 'configuracoes'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
@@ -108,7 +107,6 @@ function App() {
                 {currentPage === 'sugestoes' && 'Sugestões de Compra'}
                 {currentPage === 'relatorios' && 'Relatórios'}
                 {currentPage === 'configuracoes' && 'Configurações'}
-                {currentPage === 'estoque-minimo' && 'Estoque Mínimo'}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -119,7 +117,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className={currentPage === 'produtos' || currentPage === 'drp' || currentPage === 'combinados' || currentPage === 'configuracoes' || currentPage === 'estoque-minimo' ? 'flex-1 overflow-hidden' : 'px-4 py-4 flex-1 overflow-auto'}>
+      <main className={currentPage === 'produtos' || currentPage === 'drp' || currentPage === 'combinados' || currentPage === 'configuracoes' ? 'flex-1 overflow-hidden' : 'px-4 py-4 flex-1 overflow-auto'}>
         {currentPage === 'produtos' ? (
           <SKUs />
         ) : currentPage === 'drp' ? (
@@ -129,10 +127,6 @@ function App() {
         ) : currentPage === 'configuracoes' ? (
           <div className="px-4 py-4 h-full overflow-hidden">
             <Configuracoes />
-          </div>
-        ) : currentPage === 'estoque-minimo' ? (
-          <div className="h-full overflow-auto">
-            <EstoqueMinimoConfig />
           </div>
         ) : (
           <>

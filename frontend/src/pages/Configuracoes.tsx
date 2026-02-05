@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { FiSettings, FiPackage, FiSliders, FiDatabase, FiUsers, FiTruck } from 'react-icons/fi'
+import { FiSettings, FiPackage, FiSliders, FiDatabase, FiUsers, FiTruck, FiBarChart2 } from 'react-icons/fi'
 import ConfiguracaoProdutos from './ConfiguracaoProdutos'
 import RegrasEstoque from './RegrasEstoque'
+import EstoqueMinimoConfig from './EstoqueMinimoConfig'
 
-type ConfigItem = 'multiplos' | 'regras' | 'filiais' | 'usuarios' | 'integracao'
+type ConfigItem = 'multiplos' | 'regras' | 'estoque-minimo' | 'filiais' | 'usuarios' | 'integracao'
 
 interface MenuItem {
   id: ConfigItem
@@ -26,6 +27,13 @@ const menuItems: MenuItem[] = [
     nome: 'Regras de Estoque',
     descricao: 'Configure lead time, segurança e cobertura',
     icone: <FiSliders size={20} />,
+    disponivel: true
+  },
+  {
+    id: 'estoque-minimo',
+    nome: 'Estoque Mínimo',
+    descricao: 'Calcule estoque mínimo dinâmico com ABC',
+    icone: <FiBarChart2 size={20} />,
     disponivel: true
   },
   {
@@ -115,6 +123,7 @@ export default function Configuracoes() {
         <div className="flex-1 overflow-hidden">
           {itemAtivo === 'multiplos' && <ConfiguracaoProdutos />}
           {itemAtivo === 'regras' && <RegrasEstoque />}
+          {itemAtivo === 'estoque-minimo' && <EstoqueMinimoConfig />}
         </div>
       </div>
     </div>
