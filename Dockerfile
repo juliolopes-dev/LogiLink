@@ -26,6 +26,9 @@ FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/backend
 
+# Instalar dependências do sistema necessárias para o Prisma
+RUN apk add --no-cache openssl-dev
+
 # Copiar package.json e package-lock.json do backend
 COPY backend/package*.json ./
 
@@ -35,7 +38,7 @@ RUN npm ci
 # Copiar código fonte do backend
 COPY backend/ ./
 
-# Gerar Prisma Client
+# Gerar Prisma Client com a engine correta
 RUN npx prisma generate
 
 # Build do backend (compila TypeScript para JavaScript)
@@ -46,6 +49,9 @@ RUN npm run build
 FROM node:20-alpine
 
 WORKDIR /app
+
+# Instalar dependências do sistema necessárias para o Prisma em runtime
+RUN apk add --no-cache openssl libssl1.1
 
 # Instalar apenas dependências de produção
 COPY backend/package*.json ./
