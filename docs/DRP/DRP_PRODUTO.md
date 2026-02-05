@@ -33,6 +33,7 @@ POST /api/drp/calcular
     status?: string             // Filtrar por status
     busca?: string              // Busca por código ou descrição
     filiais?: string[]          // Filiais destino (padrão: todas exceto CD e Garantia)
+    limite?: number             // Limite de produtos a processar (padrão: 10000)
   }
 }
 ```

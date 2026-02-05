@@ -66,6 +66,9 @@ export class DRPProdutoService {
       whereProduto += ` AND (p.cod_produto ILIKE '%${filtros.busca}%' OR p.descricao ILIKE '%${filtros.busca}%')`
     }
 
+    // Limite de produtos (pode ser configurado via filtros)
+    const limite = filtros?.limite || 10000 // Padrão: 10000 produtos
+    
     const produtosResult = await this.pool.query(`
       SELECT DISTINCT
         p.cod_produto,
@@ -77,7 +80,7 @@ export class DRPProdutoService {
       LEFT JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
       ${whereProduto}
       ORDER BY p.descricao
-      LIMIT 100
+      LIMIT ${limite}
     `)
 
     const produtos = produtosResult.rows

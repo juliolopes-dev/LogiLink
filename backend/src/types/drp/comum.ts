@@ -73,6 +73,7 @@ export interface FiltrosDRP {
   status?: string
   busca?: string
   filiais?: string[]
+  limite?: number  // Limite de produtos a processar (padrão: 10000)
 }
 
 /**
