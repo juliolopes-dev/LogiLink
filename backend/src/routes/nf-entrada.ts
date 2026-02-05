@@ -459,8 +459,6 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
         // PRIORIDADE 3: Estoque mínimo (último recurso)
         // Se ainda não tem necessidade (sem vendas E sem combinados), usar estoque mínimo
         if (necessidadeProduto === 0) {
-          necessidadeProduto = 0 // Reset
-          
           // Primeiro: verificar se alguma filial tem estoque mínimo configurado
           for (const filial of analisePorFilial) {
             if (filial.estoque_minimo > 0 && filial.meta === 0) {
@@ -471,29 +469,29 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
               necessidadeProduto += filial.necessidade
             }
           }
+        }
+        
+        // SEMPRE distribuir 1 unidade para filiais com estoque 0 e sem necessidade
+        // Isso garante que filiais zeradas recebam ao menos 1 unidade, independente de outras filiais terem vendas
+        if (estoqueCD > 0) {
+          const prioridadeFiliais = ['00', '01', '02', '05', '06']
           
-          // SEMPRE distribuir 1 unidade para filiais com estoque 0 (independente de estoque mínimo)
-          // Isso garante que filiais zeradas recebam ao menos 1 unidade de produtos novos
-          if (estoqueCD > 0) {
-            const prioridadeFiliais = ['00', '01', '02', '05', '06']
-            
-            // Ordenar filiais por prioridade
-            const filiaisOrdenadas = [...analisePorFilial].sort((a, b) => {
-              const prioA = prioridadeFiliais.indexOf(a.cod_filial)
-              const prioB = prioridadeFiliais.indexOf(b.cod_filial)
-              return prioA - prioB
-            })
-            
-            // Distribuir 1 unidade por filial com estoque 0 que ainda não tem necessidade
-            for (const filial of filiaisOrdenadas) {
-              if (necessidadeProduto < estoqueCD) {
-                // Se filial tem estoque 0 E ainda não tem necessidade calculada
-                if (filial.estoque_atual === 0 && filial.necessidade === 0) {
-                  filial.meta = 1
-                  filial.necessidade = 1
-                  filial.usou_estoque_minimo = true
-                  necessidadeProduto += 1
-                }
+          // Ordenar filiais por prioridade
+          const filiaisOrdenadas = [...analisePorFilial].sort((a, b) => {
+            const prioA = prioridadeFiliais.indexOf(a.cod_filial)
+            const prioB = prioridadeFiliais.indexOf(b.cod_filial)
+            return prioA - prioB
+          })
+          
+          // Distribuir 1 unidade por filial com estoque 0 que ainda não tem necessidade
+          for (const filial of filiaisOrdenadas) {
+            if (necessidadeProduto < estoqueCD) {
+              // Se filial tem estoque 0 E ainda não tem necessidade calculada
+              if (filial.estoque_atual === 0 && filial.necessidade === 0) {
+                filial.meta = 1
+                filial.necessidade = 1
+                filial.usou_estoque_minimo = true
+                necessidadeProduto += 1
               }
             }
           }
