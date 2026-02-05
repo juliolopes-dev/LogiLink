@@ -5,7 +5,7 @@
  * usando classificação ABC (Pareto) e análise de tendências.
  */
 
-import { poolAuditoria } from '../../config/database-auditoria'
+import poolAuditoria from '../../lib/database-auditoria'
 
 // Configurações do algoritmo
 const CONFIG = {
@@ -92,11 +92,12 @@ async function buscarVendasFilial(
   
   const result = await poolAuditoria.query(`
     SELECT COALESCE(SUM(quantidade), 0) as vendas
-    FROM auditoria_integracao."Vendas"
+    FROM auditoria_integracao."Movimentacao_DRP"
     WHERE cod_produto = $1
       AND cod_filial = $2
-      AND data_venda >= $3
-      AND data_venda < $4
+      AND tipo_movimento = '55'
+      AND data_movimento >= $3
+      AND data_movimento < $4
   `, [cod_produto, cod_filial, dataInicio, dataFim])
   
   return parseFloat(result.rows[0]?.vendas || '0')
@@ -159,11 +160,12 @@ async function calcularFatorSazonal(
   // Vendas do mesmo mês no ano anterior
   const resultMes = await poolAuditoria.query(`
     SELECT COALESCE(SUM(quantidade), 0) as vendas
-    FROM auditoria_integracao."Vendas"
+    FROM auditoria_integracao."Movimentacao_DRP"
     WHERE cod_produto = $1
       AND cod_filial = $2
-      AND EXTRACT(MONTH FROM data_venda) = $3
-      AND EXTRACT(YEAR FROM data_venda) = $4
+      AND tipo_movimento = '55'
+      AND EXTRACT(MONTH FROM data_movimento) = $3
+      AND EXTRACT(YEAR FROM data_movimento) = $4
   `, [cod_produto, cod_filial, mesAtual, anoAnterior])
   
   const vendasMesAnoAnterior = parseFloat(resultMes.rows[0]?.vendas || '0')
@@ -171,10 +173,11 @@ async function calcularFatorSazonal(
   // Média mensal do ano anterior
   const resultAno = await poolAuditoria.query(`
     SELECT COALESCE(SUM(quantidade), 0) / 12 as media_mensal
-    FROM auditoria_integracao."Vendas"
+    FROM auditoria_integracao."Movimentacao_DRP"
     WHERE cod_produto = $1
       AND cod_filial = $2
-      AND EXTRACT(YEAR FROM data_venda) = $3
+      AND tipo_movimento = '55'
+      AND EXTRACT(YEAR FROM data_movimento) = $3
   `, [cod_produto, cod_filial, anoAnterior])
   
   const mediaMensalAnoAnterior = parseFloat(resultAno.rows[0]?.media_mensal || '0')
@@ -204,12 +207,13 @@ async function classificarProdutoABC(
   const result = await poolAuditoria.query(`
     WITH faturamento_produtos AS (
       SELECT 
-        v.cod_produto,
-        SUM(v.quantidade * v.preco_unitario) as faturamento
-      FROM auditoria_integracao."Vendas" v
-      WHERE v.cod_filial = $1
-        AND v.data_venda >= $2
-      GROUP BY v.cod_produto
+        m.cod_produto,
+        SUM(m.quantidade * m.valor_venda) as faturamento
+      FROM auditoria_integracao."Movimentacao_DRP" m
+      WHERE m.cod_filial = $1
+        AND m.tipo_movimento = '55'
+        AND m.data_movimento >= $2
+      GROUP BY m.cod_produto
     ),
     ranking AS (
       SELECT 
