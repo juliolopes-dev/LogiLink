@@ -19,6 +19,8 @@ Sugerir alocações de produtos da filial de origem para as filiais destino, pri
 - **Processa TODOS os produtos** da filial de origem que tenham estoque > 0
 - **Sem limite de quantidade** - analisa todos os produtos disponíveis
 - **Filial de origem dinâmica** - pode ser CD (04) ou qualquer outra filial (00, 01, 02, 05, 06)
+- **Cálculo completo** - backend calcula TODOS os produtos de uma vez (sem paginação no cálculo)
+- **Paginação local** - frontend recebe todos os produtos e faz paginação localmente (100 produtos por página)
 
 ## 📡 API
 
@@ -48,10 +50,18 @@ POST /api/drp/calcular
 
 ### Response
 
+**IMPORTANTE:** O backend retorna **TODOS os produtos calculados** de uma vez. A paginação é feita localmente no frontend.
+
 ```typescript
 {
   success: boolean
-  data: {
+  resumo: {
+    total_produtos: number
+    produtos_com_necessidade: number
+    produtos_sem_necessidade: number
+    valor_total_estoque: number
+  }
+  produtos: {
     cod_produto: string
     descricao: string
     grupo: string
@@ -79,6 +89,12 @@ POST /api/drp/calcular
   }[]
 }
 ```
+
+**Observações:**
+- O array `produtos` contém **TODOS os produtos** calculados (não há paginação no backend)
+- O frontend armazena todos os produtos e faz paginação local (100 itens por página)
+- Navegação entre páginas é instantânea (não requer nova chamada à API)
+- Cache local mantém os resultados até nova consulta
 
 ## 🔧 Regras de Negócio
 
