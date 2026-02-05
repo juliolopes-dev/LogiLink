@@ -52,9 +52,10 @@ export class DRPProdutoService {
     const mapas = await carregarCombinados(this.pool)
     console.log(`✅ ${mapas.grupoParaProdutos.size} grupos de combinados carregados`)
 
-    // 2. Buscar todos os produtos ativos (independente do estoque)
+    // 2. Buscar TODOS os produtos ativos COM ESTOQUE NO CD
     let whereProduto = `
       WHERE p.ativo = 'S'
+        AND e.estoque > 0
     `
 
     if (filtros?.grupo) {
@@ -64,26 +65,22 @@ export class DRPProdutoService {
     if (filtros?.busca) {
       whereProduto += ` AND (p.cod_produto ILIKE '%${filtros.busca}%' OR p.descricao ILIKE '%${filtros.busca}%')`
     }
-
-    // Limite de produtos (pode ser configurado via filtros)
-    const limite = filtros?.limite || 10000 // Padrão: 10000 produtos
     
     const produtosResult = await this.pool.query(`
       SELECT DISTINCT
         p.cod_produto,
         p.descricao,
         COALESCE(g.descricao, 'Sem Grupo') as grupo,
-        COALESCE(e.estoque, 0) as estoque_cd
+        e.estoque as estoque_cd
       FROM auditoria_integracao.auditoria_produtos_drp p
       LEFT JOIN auditoria_integracao."Grupo" g ON p.cod_grupo = g.codgrupo
-      LEFT JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
+      INNER JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
       ${whereProduto}
       ORDER BY p.descricao
-      LIMIT ${limite}
     `)
 
     const produtos = produtosResult.rows
-    console.log(`📊 ${produtos.length} produtos ativos encontrados (incluindo sem estoque)`)
+    console.log(`📊 ${produtos.length} produtos com estoque no CD encontrados`)
 
     const resultados: ProdutoAnalise[] = []
 
