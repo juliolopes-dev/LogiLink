@@ -1,17 +1,24 @@
-# DRP por Produto
+# Cálculo DRP por Produto
 
 ## 📋 Visão Geral
 
-O **DRP por Produto** calcula a distribuição de produtos do Centro de Distribuição (CD) para as filiais com base em:
-- Estoque disponível no CD
-- Histórico de vendas de cada filial
+O **Cálculo DRP por Produto** calcula a distribuição de produtos de uma filial de origem para as demais filiais com base em:
+- Estoque disponível na filial de origem (CD ou qualquer outra filial)
+- Histórico de vendas de cada filial destino
 - Necessidade calculada (meta - estoque atual)
 - Múltiplos de venda configurados
 - Produtos combinados (quando não há histórico individual)
 
 ## 🎯 Objetivo
 
-Sugerir alocações de produtos do CD para filiais, priorizando quem mais vende e garantindo distribuição proporcional quando o estoque é limitado.
+Sugerir alocações de produtos da filial de origem para as filiais destino, priorizando quem mais vende e garantindo distribuição proporcional quando o estoque é limitado.
+
+## ⚙️ Funcionamento
+
+### Processamento de Produtos
+- **Processa TODOS os produtos** da filial de origem que tenham estoque > 0
+- **Sem limite de quantidade** - analisa todos os produtos disponíveis
+- **Filial de origem dinâmica** - pode ser CD (04) ou qualquer outra filial (00, 01, 02, 05, 06)
 
 ## 📡 API
 
@@ -27,13 +34,14 @@ POST /api/drp/calcular
 {
   periodo_dias: number          // Período em dias para análise (7-365)
   filial_origem?: string        // Filial origem (padrão: '04' - CD)
+                                // Pode ser: '00' (Petrolina), '01' (Juazeiro), 
+                                // '02' (Salgueiro), '04' (CD), '05' (Bonfim), '06' (Picos)
   filtros?: {
     grupo?: string              // Filtrar por grupo de produtos
     fornecedor?: string         // Filtrar por fornecedor
     status?: string             // Filtrar por status
     busca?: string              // Busca por código ou descrição
-    filiais?: string[]          // Filiais destino (padrão: todas exceto CD e Garantia)
-    limite?: number             // Limite de produtos a processar (padrão: 10000)
+    filiais?: string[]          // Filiais destino (padrão: todas exceto origem e Garantia)
   }
 }
 ```
