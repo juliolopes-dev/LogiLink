@@ -48,12 +48,12 @@ export default function EstoqueMinimoConfig() {
     <div className="h-full overflow-auto">
       <div className="max-w-4xl space-y-4">
         {/* Card de Informações */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info rounded-md p-4">
         <div className="flex items-start gap-3">
-          <FiInfo className="text-blue-600 text-xl mt-0.5 flex-shrink-0" />
+          <FiInfo className="text-info text-xl mt-0.5 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-blue-900 mb-2">Como funciona o cálculo?</h3>
-            <ul className="text-sm text-blue-800 space-y-1">
+            <h3 className="font-semibold text-info-text mb-2">Como funciona o cálculo?</h3>
+            <ul className="text-sm text-info-text space-y-1">
               <li>• Analisa vendas dos últimos 180 dias (6 meses)</li>
               <li>• Classifica produtos em ABC (Pareto 80/20)</li>
               <li>• Considera tendências e sazonalidade</li>
@@ -67,10 +67,10 @@ export default function EstoqueMinimoConfig() {
       </div>
 
       {/* Card de Ação */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Cálculo Inicial</h2>
+      <div className="bg-surface border border-border rounded-md p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Cálculo Inicial</h2>
         
-        <p className="text-gray-600 mb-6">
+        <p className="text-slate-600 mb-6">
           Execute o cálculo inicial de estoque mínimo para todos os produtos ativos.
           Este processo irá analisar o histórico de vendas e calcular o estoque mínimo
           ideal para cada produto em cada filial.
@@ -80,22 +80,22 @@ export default function EstoqueMinimoConfig() {
           onClick={calcularTodosProdutos}
           disabled={calculando}
           className={`
-            flex items-center gap-2 px-6 py-3 rounded-lg font-medium
+            flex items-center gap-2 px-6 py-3 rounded-md font-medium text-sm
             transition-all duration-200
             ${calculando 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              ? 'bg-slate-400 cursor-not-allowed' 
+              : 'bg-accent hover:bg-accent-hover active:scale-95'
             }
-            text-white shadow-md hover:shadow-lg
+            text-white
           `}
         >
-          <FiRefreshCw className={`text-xl ${calculando ? 'animate-spin' : ''}`} />
+          <FiRefreshCw className={`text-base ${calculando ? 'animate-spin' : ''}`} />
           {calculando ? 'Calculando...' : 'Calcular Todos os Produtos'}
         </button>
 
         {calculando && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm">
+          <div className="mt-4 p-4 bg-warning-subtle border border-warning rounded-md">
+            <p className="text-warning-text text-sm">
               ⏳ Processando... Este processo pode levar alguns minutos dependendo da quantidade de produtos.
             </p>
           </div>
@@ -104,31 +104,31 @@ export default function EstoqueMinimoConfig() {
 
       {/* Resultado do Cálculo */}
       {resultado && (
-        <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-surface border border-border rounded-md p-6">
           <div className="flex items-center gap-2 mb-4">
-            <FiCheckCircle className="text-green-600 text-2xl" />
-            <h2 className="text-lg font-semibold text-gray-800">Cálculo Concluído!</h2>
+            <FiCheckCircle className="text-success text-2xl" />
+            <h2 className="text-lg font-semibold text-slate-900">Cálculo Concluído!</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-600 font-medium">Total de Produtos</p>
-              <p className="text-2xl font-bold text-blue-900">{resultado.total_produtos}</p>
+            <div className="bg-info-subtle p-4 rounded-md border border-info">
+              <p className="text-sm text-info font-medium">Total de Produtos</p>
+              <p className="text-2xl font-bold text-info-text">{resultado.total_produtos}</p>
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-sm text-green-600 font-medium">Sucesso</p>
-              <p className="text-2xl font-bold text-green-900">{resultado.sucesso}</p>
-              <p className="text-xs text-green-700">
+            <div className="bg-success-subtle p-4 rounded-md border border-success">
+              <p className="text-sm text-success font-medium">Sucesso</p>
+              <p className="text-2xl font-bold text-success-text">{resultado.sucesso}</p>
+              <p className="text-xs text-success-text">
                 {((resultado.sucesso / resultado.total_produtos) * 100).toFixed(1)}%
               </p>
             </div>
 
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-sm text-red-600 font-medium">Erros</p>
-              <p className="text-2xl font-bold text-red-900">{resultado.erros}</p>
+            <div className="bg-danger-subtle p-4 rounded-md border border-danger">
+              <p className="text-sm text-danger font-medium">Erros</p>
+              <p className="text-2xl font-bold text-danger-text">{resultado.erros}</p>
               {resultado.erros > 0 && (
-                <p className="text-xs text-red-700">
+                <p className="text-xs text-danger-text">
                   {((resultado.erros / resultado.total_produtos) * 100).toFixed(1)}%
                 </p>
               )}
@@ -136,13 +136,13 @@ export default function EstoqueMinimoConfig() {
           </div>
 
           {resultado.produtos_erro && resultado.produtos_erro.length > 0 && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-900 mb-2">
+            <div className="mt-4 p-4 bg-danger-subtle border border-danger rounded-md">
+              <p className="text-sm font-medium text-danger-text mb-2">
                 Produtos com erro (primeiros 10):
               </p>
               <div className="flex flex-wrap gap-2">
                 {resultado.produtos_erro.map((cod) => (
-                  <span key={cod} className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">
+                  <span key={cod} className="px-2 py-1 bg-danger-subtle text-danger-text text-xs rounded-full border border-danger">
                     {cod}
                   </span>
                 ))}
@@ -150,8 +150,8 @@ export default function EstoqueMinimoConfig() {
             </div>
           )}
 
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-sm text-slate-600">
               ✅ O estoque mínimo foi calculado e salvo no banco de dados.
               Você pode visualizar os resultados na análise de DRP.
             </p>
@@ -161,21 +161,21 @@ export default function EstoqueMinimoConfig() {
 
       {/* Erro */}
       {erro && (
-        <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-danger-subtle border border-danger rounded-md p-4">
           <div className="flex items-start gap-2">
-            <FiAlertCircle className="text-red-600 text-xl mt-0.5 flex-shrink-0" />
+            <FiAlertCircle className="text-danger text-xl mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-red-900">Erro ao calcular</p>
-              <p className="text-sm text-red-700 mt-1">{erro}</p>
+              <p className="font-medium text-danger-text">Erro ao calcular</p>
+              <p className="text-sm text-danger-text mt-1">{erro}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Informações Adicionais */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <h3 className="font-semibold text-gray-800 mb-3">Próximos Passos</h3>
-        <ul className="text-sm text-gray-600 space-y-2">
+      <div className="bg-background-subtle border border-border rounded-md p-4">
+        <h3 className="font-semibold text-slate-900 mb-3">Próximos Passos</h3>
+        <ul className="text-sm text-slate-600 space-y-2">
           <li>• Após o cálculo inicial, o estoque mínimo será usado automaticamente no DRP</li>
           <li>• Você pode recalcular produtos individuais quando necessário</li>
           <li>• Recomenda-se recalcular todos os produtos mensalmente</li>
