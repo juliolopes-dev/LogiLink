@@ -592,4 +592,4 @@ ORDER BY e.estoque DESC
 
 
 
-*Documentação atualizada em: 04/Fevereiro/2026*
+*Documentação atualizada em: 05/Fevereiro/2026*
