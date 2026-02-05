@@ -254,4 +254,374 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
       })
     }
   })
+
+  // ============================================================
+  // NOVOS ENDPOINTS - ESTOQUE MÍNIMO DINÂMICO COM CLASSIFICAÇÃO ABC
+  // ============================================================
+
+  /**
+   * GET /api/estoque-minimo/dinamico/:cod_produto/:cod_filial
+   * Retorna o estoque mínimo calculado de um produto em uma filial
+   */
+  fastify.get<{
+    Params: { cod_produto: string; cod_filial: string }
+  }>('/estoque-minimo/dinamico/:cod_produto/:cod_filial', async (request, reply) => {
+    try {
+      const { cod_produto, cod_filial } = request.params
+
+      const result = await poolAuditoria.query(`
+        SELECT *
+        FROM estoque_minimo
+        WHERE cod_produto = $1 AND cod_filial = $2
+      `, [cod_produto, cod_filial])
+
+      if (result.rows.length === 0) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Estoque mínimo não encontrado para este produto/filial'
+        })
+      }
+
+      return {
+        success: true,
+        data: result.rows[0]
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar estoque mínimo dinâmico:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao buscar estoque mínimo'
+      })
+    }
+  })
+
+  /**
+   * GET /api/estoque-minimo/dinamico/filial/:cod_filial
+   * Lista todos os estoques mínimos de uma filial
+   */
+  fastify.get<{
+    Params: { cod_filial: string }
+    Querystring: { classe_abc?: string; page?: string; limit?: string }
+  }>('/estoque-minimo/dinamico/filial/:cod_filial', async (request, reply) => {
+    try {
+      const { cod_filial } = request.params
+      const { classe_abc, page = '1', limit = '50' } = request.query
+
+      const pageNum = parseInt(page)
+      const limitNum = parseInt(limit)
+      const offset = (pageNum - 1) * limitNum
+
+      let query = `
+        SELECT em.*, 
+          e.estoque as estoque_atual,
+          CASE WHEN e.estoque < em.estoque_minimo_ativo THEN true ELSE false END as abaixo_minimo
+        FROM estoque_minimo em
+        LEFT JOIN auditoria_integracao."Estoque_DRP" e 
+          ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
+        WHERE em.cod_filial = $1
+      `
+      const params: any[] = [cod_filial]
+      let paramIndex = 2
+
+      if (classe_abc) {
+        query += ` AND em.classe_abc = $${paramIndex}`
+        params.push(classe_abc)
+        paramIndex++
+      }
+
+      query += ` ORDER BY em.classe_abc, em.estoque_minimo_ativo DESC`
+      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+      params.push(limitNum, offset)
+
+      const result = await poolAuditoria.query(query, params)
+
+      // Contar total
+      let countQuery = `SELECT COUNT(*) as total FROM estoque_minimo WHERE cod_filial = $1`
+      const countParams: any[] = [cod_filial]
+      if (classe_abc) {
+        countQuery += ` AND classe_abc = $2`
+        countParams.push(classe_abc)
+      }
+      const countResult = await poolAuditoria.query(countQuery, countParams)
+      const total = parseInt(countResult.rows[0].total)
+
+      return {
+        success: true,
+        data: result.rows,
+        paginacao: {
+          pagina_atual: pageNum,
+          por_pagina: limitNum,
+          total_registros: total,
+          total_paginas: Math.ceil(total / limitNum)
+        }
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao listar estoque mínimo por filial:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao listar estoque mínimo'
+      })
+    }
+  })
+
+  /**
+   * POST /api/estoque-minimo/dinamico/recalcular
+   * Recalcula estoque mínimo de um produto (todas as filiais ou uma específica)
+   */
+  fastify.post<{
+    Body: { cod_produto: string; cod_filial?: string }
+  }>('/estoque-minimo/dinamico/recalcular', async (request, reply) => {
+    try {
+      const { cod_produto, cod_filial } = request.body
+
+      if (!cod_produto) {
+        return reply.status(400).send({
+          success: false,
+          error: 'cod_produto é obrigatório'
+        })
+      }
+
+      // Importar service dinamicamente para evitar problemas de circular dependency
+      const { calcularEstoqueMinimoFilial, salvarEstoqueMinimo, calcularEstoqueMinimoProduto } = 
+        await import('../services/estoque-minimo/estoque-minimo.service')
+
+      let resultados: any[] = []
+
+      if (cod_filial) {
+        // Recalcular apenas uma filial
+        const resultado = await calcularEstoqueMinimoFilial(cod_produto, cod_filial)
+        await salvarEstoqueMinimo(resultado)
+        resultados.push(resultado)
+      } else {
+        // Recalcular todas as filiais
+        resultados = await calcularEstoqueMinimoProduto(cod_produto)
+      }
+
+      console.log(`✅ Estoque mínimo recalculado para produto ${cod_produto}:`, 
+        resultados.map(r => `${r.cod_filial}: ${r.estoque_minimo_calculado} (${r.classe_abc})`))
+
+      return {
+        success: true,
+        message: `Estoque mínimo recalculado para ${resultados.length} filial(is)`,
+        data: resultados
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao recalcular estoque mínimo:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao recalcular estoque mínimo'
+      })
+    }
+  })
+
+  /**
+   * PUT /api/estoque-minimo/dinamico/ajustar
+   * Ajusta manualmente o estoque mínimo
+   */
+  fastify.put<{
+    Body: { 
+      cod_produto: string
+      cod_filial: string
+      estoque_minimo_manual: number
+      observacao?: string
+    }
+  }>('/estoque-minimo/dinamico/ajustar', async (request, reply) => {
+    try {
+      const { cod_produto, cod_filial, estoque_minimo_manual, observacao } = request.body
+
+      if (!cod_produto || !cod_filial || estoque_minimo_manual === undefined) {
+        return reply.status(400).send({
+          success: false,
+          error: 'cod_produto, cod_filial e estoque_minimo_manual são obrigatórios'
+        })
+      }
+
+      const { ajustarEstoqueMinimoManual } = 
+        await import('../services/estoque-minimo/estoque-minimo.service')
+
+      await ajustarEstoqueMinimoManual(
+        cod_produto,
+        cod_filial,
+        estoque_minimo_manual,
+        'usuario', // TODO: pegar do token de autenticação
+        observacao
+      )
+
+      console.log(`✅ Estoque mínimo ajustado manualmente: ${cod_produto}/${cod_filial} = ${estoque_minimo_manual}`)
+
+      return {
+        success: true,
+        message: 'Estoque mínimo ajustado com sucesso',
+        data: {
+          cod_produto,
+          cod_filial,
+          estoque_minimo_manual
+        }
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao ajustar estoque mínimo:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao ajustar estoque mínimo'
+      })
+    }
+  })
+
+  /**
+   * GET /api/estoque-minimo/dinamico/historico/:cod_produto/:cod_filial
+   * Retorna histórico de alterações do estoque mínimo
+   */
+  fastify.get<{
+    Params: { cod_produto: string; cod_filial: string }
+    Querystring: { limite?: string }
+  }>('/estoque-minimo/dinamico/historico/:cod_produto/:cod_filial', async (request, reply) => {
+    try {
+      const { cod_produto, cod_filial } = request.params
+      const limite = parseInt(request.query.limite || '10')
+
+      const result = await poolAuditoria.query(`
+        SELECT *
+        FROM estoque_minimo_historico
+        WHERE cod_produto = $1 AND cod_filial = $2
+        ORDER BY data_calculo DESC
+        LIMIT $3
+      `, [cod_produto, cod_filial, limite])
+
+      return {
+        success: true,
+        data: result.rows
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar histórico de estoque mínimo:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao buscar histórico'
+      })
+    }
+  })
+
+  /**
+   * GET /api/estoque-minimo/dinamico/abaixo-minimo
+   * Lista produtos com estoque abaixo do mínimo
+   */
+  fastify.get<{
+    Querystring: { cod_filial?: string; classe_abc?: string }
+  }>('/estoque-minimo/dinamico/abaixo-minimo', async (request, reply) => {
+    try {
+      const { cod_filial, classe_abc } = request.query
+
+      let query = `
+        SELECT 
+          em.*,
+          e.estoque as estoque_atual,
+          (em.estoque_minimo_ativo - e.estoque) as deficit,
+          p.descricao
+        FROM estoque_minimo em
+        LEFT JOIN auditoria_integracao."Estoque_DRP" e 
+          ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
+        LEFT JOIN auditoria_integracao.auditoria_produtos_drp p
+          ON em.cod_produto = p.cod_produto
+        WHERE e.estoque < em.estoque_minimo_ativo
+      `
+      const params: any[] = []
+      let paramIndex = 1
+
+      if (cod_filial) {
+        query += ` AND em.cod_filial = $${paramIndex}`
+        params.push(cod_filial)
+        paramIndex++
+      }
+
+      if (classe_abc) {
+        query += ` AND em.classe_abc = $${paramIndex}`
+        params.push(classe_abc)
+        paramIndex++
+      }
+
+      query += ` ORDER BY em.classe_abc, (em.estoque_minimo_ativo - e.estoque) DESC`
+
+      const result = await poolAuditoria.query(query, params)
+
+      // Resumo por classe
+      const resumo = {
+        classe_a: result.rows.filter((r: any) => r.classe_abc === 'A').length,
+        classe_b: result.rows.filter((r: any) => r.classe_abc === 'B').length,
+        classe_c: result.rows.filter((r: any) => r.classe_abc === 'C').length,
+        total: result.rows.length
+      }
+
+      return {
+        success: true,
+        resumo,
+        data: result.rows
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao listar produtos abaixo do mínimo:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao listar produtos'
+      })
+    }
+  })
+
+  /**
+   * GET /api/estoque-minimo/dinamico/resumo/:cod_filial
+   * Resumo de estoque mínimo por filial
+   */
+  fastify.get<{
+    Params: { cod_filial: string }
+  }>('/estoque-minimo/dinamico/resumo/:cod_filial', async (request, reply) => {
+    try {
+      const { cod_filial } = request.params
+
+      const result = await poolAuditoria.query(`
+        SELECT 
+          COUNT(*) as total_produtos,
+          COUNT(*) FILTER (WHERE classe_abc = 'A') as produtos_classe_a,
+          COUNT(*) FILTER (WHERE classe_abc = 'B') as produtos_classe_b,
+          COUNT(*) FILTER (WHERE classe_abc = 'C') as produtos_classe_c,
+          SUM(estoque_minimo_ativo) as soma_estoque_minimo,
+          MAX(data_calculo) as ultimo_calculo
+        FROM estoque_minimo
+        WHERE cod_filial = $1
+      `, [cod_filial])
+
+      // Contar produtos abaixo do mínimo
+      const abaixoResult = await poolAuditoria.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE em.classe_abc = 'A') as classe_a,
+          COUNT(*) FILTER (WHERE em.classe_abc = 'B') as classe_b,
+          COUNT(*) FILTER (WHERE em.classe_abc = 'C') as classe_c
+        FROM estoque_minimo em
+        LEFT JOIN auditoria_integracao."Estoque_DRP" e 
+          ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
+        WHERE em.cod_filial = $1
+          AND e.estoque < em.estoque_minimo_ativo
+      `, [cod_filial])
+
+      return {
+        success: true,
+        data: {
+          filial: cod_filial,
+          nome_filial: FILIAIS_MAP[cod_filial],
+          ...result.rows[0],
+          abaixo_minimo: abaixoResult.rows[0]
+        }
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar resumo de estoque mínimo:', error)
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Erro ao buscar resumo'
+      })
+    }
+  })
 }
