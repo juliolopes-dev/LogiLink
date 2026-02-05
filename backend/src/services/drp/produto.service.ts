@@ -52,10 +52,9 @@ export class DRPProdutoService {
     const mapas = await carregarCombinados(this.pool)
     console.log(`✅ ${mapas.grupoParaProdutos.size} grupos de combinados carregados`)
 
-    // 2. Buscar produtos COM ESTOQUE NO CD
+    // 2. Buscar todos os produtos ativos (independente do estoque)
     let whereProduto = `
       WHERE p.ativo = 'S'
-        AND e.estoque > 0
     `
 
     if (filtros?.grupo) {
@@ -74,7 +73,7 @@ export class DRPProdutoService {
         p.cod_produto,
         p.descricao,
         COALESCE(g.descricao, 'Sem Grupo') as grupo,
-        e.estoque as estoque_cd
+        COALESCE(e.estoque, 0) as estoque_cd
       FROM auditoria_integracao.auditoria_produtos_drp p
       LEFT JOIN auditoria_integracao."Grupo" g ON p.cod_grupo = g.codgrupo
       LEFT JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
@@ -84,7 +83,7 @@ export class DRPProdutoService {
     `)
 
     const produtos = produtosResult.rows
-    console.log(`📊 ${produtos.length} produtos encontrados com estoque no CD`)
+    console.log(`📊 ${produtos.length} produtos ativos encontrados (incluindo sem estoque)`)
 
     const resultados: ProdutoAnalise[] = []
 
