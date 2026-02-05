@@ -28,7 +28,9 @@ export default function NotificationManager({ onNotification }: NotificationMana
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/firebase-messaging-sw.js')
           .then((registration) => {
-            console.log('Service Worker registrado:', registration)
+            if (import.meta.env.DEV) {
+              console.log('Service Worker registrado:', registration)
+            }
           })
           .catch((error) => {
             console.error('Erro ao registrar Service Worker:', error)

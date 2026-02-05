@@ -40,7 +40,9 @@ export async function requestNotificationPermission(): Promise<string | null> {
     
     if (permission === 'granted') {
       const token = await getToken(messaging, { vapidKey: VAPID_KEY })
-      console.log('Token FCM:', token)
+      if (import.meta.env.DEV) {
+        console.log('Token FCM:', token)
+      }
       
       // Salvar token no backend para enviar notificações depois
       await saveTokenToServer(token)
@@ -65,7 +67,9 @@ async function saveTokenToServer(token: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token })
     })
-    console.log('✅ Token registrado no servidor')
+    if (import.meta.env.DEV) {
+      console.log('✅ Token registrado no servidor')
+    }
   } catch (error) {
     console.error('❌ Erro ao salvar token:', error)
   }
@@ -76,7 +80,9 @@ export function onForegroundMessage(callback: (payload: any) => void) {
   if (!messaging) return
 
   onMessage(messaging, (payload) => {
-    console.log('Mensagem recebida em primeiro plano:', payload)
+    if (import.meta.env.DEV) {
+      console.log('Mensagem recebida em primeiro plano:', payload)
+    }
     callback(payload)
   })
 }
