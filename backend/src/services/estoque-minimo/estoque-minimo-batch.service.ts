@@ -304,27 +304,9 @@ function calcularComCache(
 }
 
 /**
- * Salva resultados em batch usando uma única query com múltiplos VALUES
+ * Salva um único resultado no banco (upsert)
  */
-async function salvarBatch(resultados: any[]): Promise<void> {
-  if (resultados.length === 0) return
-
-  // Upsert em batch
-  const values: string[] = []
-  const params: any[] = []
-  let paramIndex = 1
-
-  for (const r of resultados) {
-    values.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, NOW(), 'automatico')`)
-    params.push(
-      r.cod_produto, r.cod_filial, r.estoque_minimo_calculado,
-      r.media_vendas_diarias, r.lead_time_dias, r.buffer_dias,
-      r.fator_seguranca, r.fator_tendencia, r.fator_sazonal,
-      r.classe_abc, r.vendas_180_dias, r.vendas_90_dias, r.vendas_90_180_dias
-    )
-    paramIndex += 13
-  }
-
+async function salvarUnico(r: any): Promise<void> {
   await poolAuditoria.query(`
     INSERT INTO auditoria_integracao.estoque_minimo (
       cod_produto, cod_filial, estoque_minimo_calculado, estoque_minimo_ativo,
@@ -332,28 +314,46 @@ async function salvarBatch(resultados: any[]): Promise<void> {
       fator_tendencia, fator_sazonal, classe_abc,
       vendas_180_dias, vendas_90_dias, vendas_90_180_dias,
       data_calculo, metodo
-    ) VALUES ${values.join(', ')}
+    ) VALUES ($1, $2, $3, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), 'automatico')
     ON CONFLICT (cod_produto, cod_filial) 
     DO UPDATE SET
-      estoque_minimo_calculado = EXCLUDED.estoque_minimo_calculado,
+      estoque_minimo_calculado = $3,
       estoque_minimo_ativo = CASE 
         WHEN auditoria_integracao.estoque_minimo.estoque_minimo_manual IS NOT NULL 
         THEN auditoria_integracao.estoque_minimo.estoque_minimo_manual 
-        ELSE EXCLUDED.estoque_minimo_calculado 
+        ELSE $3 
       END,
-      media_vendas_diarias = EXCLUDED.media_vendas_diarias,
-      lead_time_dias = EXCLUDED.lead_time_dias,
-      buffer_dias = EXCLUDED.buffer_dias,
-      fator_seguranca = EXCLUDED.fator_seguranca,
-      fator_tendencia = EXCLUDED.fator_tendencia,
-      fator_sazonal = EXCLUDED.fator_sazonal,
-      classe_abc = EXCLUDED.classe_abc,
-      vendas_180_dias = EXCLUDED.vendas_180_dias,
-      vendas_90_dias = EXCLUDED.vendas_90_dias,
-      vendas_90_180_dias = EXCLUDED.vendas_90_180_dias,
+      media_vendas_diarias = $4,
+      lead_time_dias = $5,
+      buffer_dias = $6,
+      fator_seguranca = $7,
+      fator_tendencia = $8,
+      fator_sazonal = $9,
+      classe_abc = $10,
+      vendas_180_dias = $11,
+      vendas_90_dias = $12,
+      vendas_90_180_dias = $13,
       data_calculo = NOW(),
       updated_at = NOW()
-  `)
+  `, [
+    r.cod_produto, r.cod_filial, r.estoque_minimo_calculado,
+    r.media_vendas_diarias, r.lead_time_dias, r.buffer_dias,
+    r.fator_seguranca, r.fator_tendencia, r.fator_sazonal,
+    r.classe_abc, r.vendas_180_dias, r.vendas_90_dias, r.vendas_90_180_dias
+  ])
+}
+
+/**
+ * Salva resultados em batch (paralelo de 20 em 20)
+ */
+async function salvarBatch(resultados: any[]): Promise<void> {
+  if (resultados.length === 0) return
+
+  const SAVE_BATCH = 20
+  for (let i = 0; i < resultados.length; i += SAVE_BATCH) {
+    const mini = resultados.slice(i, i + SAVE_BATCH)
+    await Promise.all(mini.map(r => salvarUnico(r)))
+  }
 }
 
 /**
