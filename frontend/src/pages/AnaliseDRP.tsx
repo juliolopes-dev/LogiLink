@@ -392,7 +392,6 @@ export default function AnaliseDRP() {
   // Limpar cache e resetar para nova consulta
   const limparCache = () => {
     setCacheDRP(null)
-    setUsandoCache(false)
     setPaginaAtual(1)
     setCalculado(false)
     setProdutos([])
@@ -406,7 +405,6 @@ export default function AnaliseDRP() {
     setTempoProcessamento(0)
     setInicioProcessamento(Date.now())
     setEtapaLoading('Carregando combinados...')
-    setUsandoCache(false)
 
     try {
       // Simular etapas de loading
