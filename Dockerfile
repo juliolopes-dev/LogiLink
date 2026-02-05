@@ -51,7 +51,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Instalar dependências do sistema necessárias para o Prisma em runtime
-RUN apk add --no-cache openssl libssl1.1
+RUN apk add --no-cache openssl
 
 # Instalar apenas dependências de produção
 COPY backend/package*.json ./
