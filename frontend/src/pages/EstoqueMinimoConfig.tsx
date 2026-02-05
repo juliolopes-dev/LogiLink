@@ -24,10 +24,7 @@ export default function EstoqueMinimoConfig() {
 
     try {
       const response = await fetch('/api/estoque-minimo/dinamico/calcular-todos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'POST'
       })
 
       const data = await response.json()
