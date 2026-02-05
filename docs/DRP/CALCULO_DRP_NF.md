@@ -106,7 +106,7 @@ POST /api/nf-entrada/cd/exportar-xlsx    # Exportar análise em Excel
 │   │                                                         │   │
 │   │ 3. Tem estoque mínimo configurado?                      │   │
 │   │    SIM → Meta = Estoque mínimo                          │   │
-│   │    NÃO → Sem sugestão (produto novo)                    │   │
+│   │    NÃO → Meta = 1 (para filiais com estoque 0)         │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -208,13 +208,16 @@ Necessidade = Meta - Estoque Atual
 - Meta: 2 unidades
 - Necessidade: 2 unidades
 
-#### **Cenário B: NÃO tem estoque mínimo configurado** ⭐ (NOVO)
+#### **Cenário B: NÃO tem estoque mínimo configurado** ⭐ (ATUALIZADO)
 
-**Quando:** Nenhuma filial tem estoque mínimo configurado para o produto.
+**Quando:** Produto sem vendas, sem combinados, e sem estoque mínimo configurado.
 
-**Cálculo:**
+**Comportamento:**
 ```
-Distribuir 1 unidade por filial seguindo ordem de prioridade:
+SEMPRE distribui 1 unidade para filiais com estoque = 0
+(independente de outras filiais terem estoque mínimo configurado)
+
+Ordem de prioridade:
 1. Petrolina (00)
 2. Juazeiro (01)
 3. Salgueiro (02)
@@ -222,9 +225,10 @@ Distribuir 1 unidade por filial seguindo ordem de prioridade:
 5. Picos (06)
 
 Regras:
-- Só distribui se filial tem estoque_atual = 0
-- Para quando acabar o estoque da NF
+- Só distribui se filial tem estoque_atual = 0 E necessidade = 0
+- Distribui até acabar o estoque da NF
 - Marca como "usou_estoque_minimo: true"
+- Garante que filiais zeradas recebam ao menos 1 unidade de produtos novos
 ```
 
 **Exemplo:**
@@ -251,12 +255,10 @@ Distribuição:
 
 **Importante:** Esta é uma solução de fallback. O ideal é configurar estoque mínimo para produtos estratégicos.
 
----
-
-### 4. ⚪ Sem Histórico (Prioridade 4)
-**Quando:** Produto não tem vendas, não tem estoque mínimo e não pertence a grupo combinado.
-
-**Resultado:** Não é possível sugerir distribuição. Produto aparece sem sugestão.
+**Mudança importante (2026-02-05):**
+- Anteriormente, só distribuía 1 unidade se NENHUMA filial tivesse estoque mínimo configurado
+- Agora, SEMPRE distribui 1 unidade para filiais com estoque 0, independente de outras filiais terem estoque mínimo
+- Garante que produtos novos ou sem histórico sejam distribuídos para filiais zeradas
 
 ---
 
