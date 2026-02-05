@@ -73,7 +73,29 @@ export interface FiltrosDRP {
   status?: string
   busca?: string
   filiais?: string[]
-  limite?: number  // Limite de produtos a processar (padrão: 10000)
+}
+
+/**
+ * Paginação para DRP
+ */
+export interface PaginacaoDRP {
+  pagina?: number      // Página atual (padrão: 1)
+  por_pagina?: number  // Itens por página (padrão: 100, máx: 500)
+}
+
+/**
+ * Resultado paginado do DRP
+ */
+export interface ResultadoPaginadoDRP {
+  produtos: ProdutoAnalise[]
+  paginacao: {
+    pagina_atual: number
+    por_pagina: number
+    total_produtos: number
+    total_paginas: number
+    tem_proxima: boolean
+    tem_anterior: boolean
+  }
 }
 
 /**

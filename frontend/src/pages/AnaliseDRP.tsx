@@ -260,6 +260,18 @@ export default function AnaliseDRP() {
   // Estado para exportação XLSX
   const [exportandoXLSX, setExportandoXLSX] = useState(false)
 
+  // Estados para paginação
+  const [paginaAtual, setPaginaAtual] = useState(1)
+  const [porPagina, setPorPagina] = useState(100)
+  const [paginacao, setPaginacao] = useState<{
+    pagina_atual: number
+    por_pagina: number
+    total_produtos: number
+    total_paginas: number
+    tem_proxima: boolean
+    tem_anterior: boolean
+  } | null>(null)
+
   // Buscar grupos para o filtro
   useEffect(() => {
     fetch('/api/drp/grupos')
@@ -386,6 +398,10 @@ export default function AnaliseDRP() {
             grupo: grupoSelecionado || undefined,
             busca: busca || undefined,
             filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
+          },
+          paginacao: {
+            pagina: paginaAtual,
+            por_pagina: porPagina
           }
         })
       })
@@ -395,6 +411,7 @@ export default function AnaliseDRP() {
       if (data.success) {
         setResumo(data.resumo)
         setProdutos(data.produtos)
+        setPaginacao(data.paginacao)
         setCalculado(true)
       } else {
         alert('Erro ao calcular DRP: ' + data.error)
@@ -415,6 +432,51 @@ export default function AnaliseDRP() {
       setFiliaisSelecionadas([...filiaisSelecionadas, cod])
     }
   }
+
+  // Funções de navegação de página
+  const irParaPagina = async (novaPagina: number) => {
+    if (!paginacao || novaPagina < 1 || novaPagina > paginacao.total_paginas) return
+    setPaginaAtual(novaPagina)
+    
+    // Recalcular com nova página
+    setLoading(true)
+    setEtapaLoading('Carregando página...')
+    
+    try {
+      const response = await fetch('/api/drp/calcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          periodo_dias: periodoDias,
+          filial_origem: filialOrigem,
+          filtros: {
+            grupo: grupoSelecionado || undefined,
+            busca: busca || undefined,
+            filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
+          },
+          paginacao: {
+            pagina: novaPagina,
+            por_pagina: porPagina
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setResumo(data.resumo)
+        setProdutos(data.produtos)
+        setPaginacao(data.paginacao)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar página:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const paginaAnterior = () => irParaPagina(paginaAtual - 1)
+  const proximaPagina = () => irParaPagina(paginaAtual + 1)
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('pt-BR').format(Math.round(num))
@@ -2002,6 +2064,64 @@ export default function AnaliseDRP() {
               </tbody>
             </table>
           </div>
+
+          {/* Paginação */}
+          {paginacao && paginacao.total_paginas > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
+              <div className="text-sm text-slate-600">
+                Mostrando <strong>{produtos.length}</strong> de <strong>{paginacao.total_produtos}</strong> produtos
+                {' '}(Página {paginacao.pagina_atual} de {paginacao.total_paginas})
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={paginaAnterior}
+                  disabled={!paginacao.tem_anterior || loading}
+                  className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Anterior
+                </button>
+                
+                {/* Números das páginas */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, paginacao.total_paginas) }, (_, i) => {
+                    let pageNum: number
+                    if (paginacao.total_paginas <= 5) {
+                      pageNum = i + 1
+                    } else if (paginacao.pagina_atual <= 3) {
+                      pageNum = i + 1
+                    } else if (paginacao.pagina_atual >= paginacao.total_paginas - 2) {
+                      pageNum = paginacao.total_paginas - 4 + i
+                    } else {
+                      pageNum = paginacao.pagina_atual - 2 + i
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => irParaPagina(pageNum)}
+                        disabled={loading}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                          pageNum === paginacao.pagina_atual
+                            ? 'bg-primary text-white'
+                            : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+                        } disabled:opacity-50`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  onClick={proximaPagina}
+                  disabled={!paginacao.tem_proxima || loading}
+                  className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Próxima →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -29,15 +29,15 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/drp/calcular
-   * Calcula DRP por Produto
+   * Calcula DRP por Produto com paginação
    */
   fastify.post('/api/drp/calcular', async (request, reply) => {
     try {
       const body = request.body as CalcularDRPProdutoRequest
 
-      const resultados = await service.calcular(body)
+      const resultado = await service.calcular(body)
 
-      // Calcular resumo
+      // Calcular resumo da página atual
       let totalNecessidade = 0
       let totalEstoqueCD = 0
       let totalDeficit = 0
@@ -45,7 +45,7 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
       let produtosRateio = 0
       let produtosDeficit = 0
 
-      for (const produto of resultados) {
+      for (const produto of resultado.produtos) {
         totalNecessidade += produto.necessidade_total
         totalEstoqueCD += produto.estoque_cd
         totalDeficit += produto.deficit
@@ -58,7 +58,8 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
       return {
         success: true,
         resumo: {
-          total_skus: resultados.length,
+          total_skus: resultado.paginacao.total_produtos,
+          skus_pagina: resultado.produtos.length,
           necessidade_total: Math.round(totalNecessidade),
           estoque_cd: Math.round(totalEstoqueCD),
           deficit_total: Math.round(totalDeficit),
@@ -68,7 +69,8 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
           periodo_dias: body.periodo_dias,
           filial_origem: body.filial_origem || CD_FILIAL
         },
-        produtos: resultados
+        paginacao: resultado.paginacao,
+        produtos: resultado.produtos
       }
     } catch (error: any) {
       console.error('❌ Erro ao calcular DRP por Produto:', error)
