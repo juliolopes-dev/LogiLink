@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TABELAS EXISTENTES (SOMENTE LEITURA)
+// ============================================
+
+model DimProduto {
+  cod_produto            String    @id @map("cod_produto") @db.VarChar
+  ativo                  String?   @map("ativo") @db.Char(1)
+  codigo_barras          String?   @map("codigo_barras") @db.VarChar
+  referencia_fabricante  String?   @map("referencia_fabricante") @db.VarChar
+  descricao              String?   @map("descricao") @db.VarChar
+  descricao2             String?   @map("descricao2") @db.VarChar
+  descricao3             String?   @map("descricao3") @db.VarChar
+  cod_grupo              String?   @map("cod_grupo") @db.VarChar
+  cod_subgrupo           String?   @map("cod_subgrupo") @db.VarChar
+  cod_fabricante         String?   @map("cod_fabricante") @db.VarChar
+  estoque_minimo         Decimal?  @map("estoque_minimo") @db.Decimal
+  dias_estoque_minimo    Int?      @map("dias_estoque_minimo")
+  estoque_maximo         Decimal?  @map("estoque_maximo") @db.Decimal
+  dias_estoque_maximo    Int?      @map("dias_estoque_maximo")
+  comissao               Decimal?  @map("comissao") @db.Decimal
+  cod_fornecedor_principal String? @map("cod_fornecedor_principal") @db.VarChar
+  unidade_entrada        String?   @map("unidade_entrada") @db.VarChar
+  unidade_saida          String?   @map("unidade_saida") @db.VarChar
+  produto_bloqueado      String?   @map("produto_bloqueado") @db.Char(1)
+  data_cadastro          DateTime? @map("data_cadastro") @db.Date
+  data_ultima_alteracao  DateTime? @map("data_ultima_alteracao") @db.Date
+  data_sincronizacao     DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@map("dim_produto")
+}
+
+model FatoEstoque {
+  filial_origem        String    @map("filial_origem") @db.VarChar
+  cod_produto          String    @map("cod_produto") @db.VarChar
+  cod_filial           String    @map("cod_filial") @db.VarChar
+  estoque              Decimal?  @map("estoque") @db.Decimal
+  quantidade_bloqueada Decimal?  @map("quantidade_bloqueada") @db.Decimal
+  estoque_minimo       Decimal?  @map("estoque_minimo") @db.Decimal
+  preco_custo          Decimal?  @map("preco_custo") @db.Decimal
+  preco_medio          Decimal?  @map("preco_medio") @db.Decimal
+  data_calculo_custo   DateTime? @map("data_calculo_custo") @db.Date
+  data_sincronizacao   DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@id([cod_produto, cod_filial, filial_origem])
+  @@map("fato_estoque")
+}
+
+// REMOVIDO: FatoMovimentacao - Migrado para banco de auditoria
+// Agora usando VIEW Movimentacao_DRP via Pool pg
+// Data: 28/01/2026
+
+model DimFornecedor {
+  cod_fornecedor     String    @id @map("cod_fornecedor") @db.VarChar
+  razao_social       String?   @map("razao_social") @db.VarChar
+  nome_fantasia      String?   @map("nome_fantasia") @db.VarChar
+  cnpj               String?   @map("cnpj") @db.VarChar
+  data_sincronizacao DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@map("dim_fornecedor")
+}
+
+model DimGrupo {
+  cod_grupo          String    @id @map("codgrupo") @db.VarChar
+  descricao          String?   @map("descricao") @db.VarChar
+  data_sincronizacao DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@map("dim_grupo")
+}
+
+model DimSubgrupo {
+  cod_subgrupo       String    @id @map("cod_subgrupo") @db.VarChar
+  cod_grupo          String?   @map("cod_grupo") @db.VarChar
+  descricao          String?   @map("descricao") @db.VarChar
+  data_sincronizacao DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@map("dim_subgrupo")
+}
+
+model DimFabricante {
+  cod_fabricante     String    @id @map("cod_fabricante") @db.VarChar
+  descricao          String?   @map("descricao") @db.VarChar
+  data_sincronizacao DateTime? @map("data_sincronizacao") @db.Timestamp(6)
+
+  @@map("dim_fabricante")
+}
+
+model DimTipoMovimento {
+  cod_tipo_movimento String  @id @map("cod_tipo_movimento") @db.VarChar(2)
+  descricao          String? @db.VarChar(100)
+  tipo               String? @db.VarChar(1)
+
+  @@map("dim_tipo_movimento")
+}
+
+model ConfigDRP {
+  id                    Int       @id @default(autoincrement())
+  cod_produto           String    @db.VarChar(20)
+  cod_filial            String    @db.VarChar(2)
+  estoque_minimo_custom Int?
+  dias_cobertura_custom Int?
+  meta_manual           Int?
+  observacao            String?   @db.Text
+  ativo                 Boolean   @default(true)
+  created_at            DateTime  @default(now()) @db.Timestamp(6)
+  updated_at            DateTime  @default(now()) @db.Timestamp(6)
+
+  @@unique([cod_produto, cod_filial])
+  @@index([ativo], map: "idx_config_drp_ativo")
+  @@map("config_drp")
+}
+
+model Combinado {
+  cod_grupo  String               @id @db.VarChar(50)
+  descricao  String               @db.VarChar(255)
+  ativo      Boolean              @default(true)
+  observacao String?              @db.Text
+  created_at DateTime             @default(now()) @db.Timestamp(6)
+  updated_at DateTime             @default(now()) @db.Timestamp(6)
+  produtos   CombinadoProduto[]
+
+  @@map("combinados")
+}
+
+model CombinadoProduto {
+  id          Int       @id @default(autoincrement())
+  cod_grupo   String    @db.VarChar(50)
+  cod_produto String    @db.VarChar(20)
+  ordem       Int       @default(1)
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  combinado   Combinado @relation(fields: [cod_grupo], references: [cod_grupo], onDelete: Cascade)
+
+  @@unique([cod_grupo, cod_produto])
+  @@index([cod_grupo])
+  @@index([cod_produto])
+  @@map("combinados_produtos")
+}

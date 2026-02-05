@@ -1,0 +1,16 @@
+{
+  "name": "LogiLink - DRP & Compras",
+  "short_name": "LogiLink",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1f2f3",
+  "theme_color": "#252525",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
