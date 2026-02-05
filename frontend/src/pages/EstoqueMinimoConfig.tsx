@@ -52,6 +52,7 @@ export default function EstoqueMinimoConfig() {
             <h3 className="font-semibold text-info-text mb-2">Como funciona o cálculo?</h3>
             <ul className="text-sm text-info-text space-y-1">
               <li>• Analisa vendas dos últimos 180 dias (6 meses)</li>
+              <li>• Inclui produtos com pelo menos 1 venda no período</li>
               <li>• Classifica produtos em ABC (Pareto 80/20)</li>
               <li>• Considera tendências e sazonalidade</li>
               <li>• Lead time de 30 dias + buffer por classe</li>

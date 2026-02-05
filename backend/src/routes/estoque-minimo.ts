@@ -644,7 +644,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
           AND m.tipo_movimento = '55'
           AND m.cod_filial != '03'
         GROUP BY m.cod_produto
-        HAVING SUM(m.quantidade) > 10
+        HAVING SUM(m.quantidade) >= 1
         ORDER BY m.cod_produto
       `, [dataInicio])
 
