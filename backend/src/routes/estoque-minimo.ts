@@ -8,6 +8,13 @@
 
 import { FastifyInstance } from 'fastify'
 import poolAuditoria from '../lib/database-auditoria'
+import { 
+  calcularEstoqueMinimoFilial, 
+  salvarEstoqueMinimo, 
+  calcularEstoqueMinimoProduto,
+  resumoEstoqueMinimoFilial,
+  ajustarEstoqueMinimoManual
+} from '../services/estoque-minimo/estoque-minimo.service'
 
 // Filiais para análise (exceto CD)
 const FILIAIS = ['00', '01', '02', '05', '06']
@@ -383,10 +390,6 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
         })
       }
 
-      // Importar service dinamicamente para evitar problemas de circular dependency
-      const { calcularEstoqueMinimoFilial, salvarEstoqueMinimo, calcularEstoqueMinimoProduto } = 
-        await import('../services/estoque-minimo/estoque-minimo.service')
-
       let resultados: any[] = []
 
       if (cod_filial) {
@@ -438,9 +441,6 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
           error: 'cod_produto, cod_filial e estoque_minimo_manual são obrigatórios'
         })
       }
-
-      const { ajustarEstoqueMinimoManual } = 
-        await import('../services/estoque-minimo/estoque-minimo.service')
 
       await ajustarEstoqueMinimoManual(
         cod_produto,
@@ -658,10 +658,6 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
       }
 
       console.log(`📦 Encontrados ${produtos.length} produtos para calcular`)
-
-      // Importar service dinamicamente
-      const { calcularEstoqueMinimoProduto } = 
-        await import('../services/estoque-minimo/estoque-minimo.service')
 
       let sucesso = 0
       let erros = 0
