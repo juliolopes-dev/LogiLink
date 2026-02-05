@@ -15,6 +15,7 @@ import {
   resumoEstoqueMinimoFilial,
   ajustarEstoqueMinimoManual
 } from '../services/estoque-minimo/estoque-minimo.service'
+import { iniciarCalculoBatch, getJobStatus } from '../services/estoque-minimo/estoque-minimo-batch.service'
 
 // Filiais para análise (exceto CD)
 const FILIAIS = ['00', '01', '02', '05', '06']
@@ -627,78 +628,34 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/estoque-minimo/dinamico/calcular-todos
-   * Calcula estoque mínimo de todos os produtos ativos
+   * Inicia cálculo em background (não bloqueia)
    */
   fastify.post('/estoque-minimo/dinamico/calcular-todos', async (request, reply) => {
     try {
-      console.log('🚀 Iniciando cálculo de todos os produtos...')
-
-      // Buscar produtos ativos com vendas
-      const dataInicio = new Date()
-      dataInicio.setDate(dataInicio.getDate() - 180)
+      const resultado = await iniciarCalculoBatch()
       
-      const produtosResult = await poolAuditoria.query(`
-        SELECT DISTINCT m.cod_produto
-        FROM auditoria_integracao."Movimentacao_DRP" m
-        WHERE m.data_movimento >= $1
-          AND m.tipo_movimento = '55'
-          AND m.cod_filial != '03'
-        GROUP BY m.cod_produto
-        HAVING SUM(m.quantidade) >= 1
-        ORDER BY m.cod_produto
-      `, [dataInicio])
-
-      const produtos = produtosResult.rows.map((r: any) => r.cod_produto)
-      
-      if (produtos.length === 0) {
-        return {
-          success: false,
-          error: 'Nenhum produto encontrado com vendas suficientes'
-        }
-      }
-
-      console.log(`📦 Encontrados ${produtos.length} produtos para calcular`)
-
-      let sucesso = 0
-      let erros = 0
-      const produtosErro: string[] = []
-
-      // Calcular cada produto
-      for (const cod_produto of produtos) {
-        try {
-          await calcularEstoqueMinimoProduto(cod_produto)
-          sucesso++
-          
-          // Log a cada 50 produtos
-          if (sucesso % 50 === 0) {
-            console.log(`📊 Progresso: ${sucesso}/${produtos.length} produtos`)
-          }
-        } catch (error: any) {
-          console.error(`❌ Erro no produto ${cod_produto}:`, error.message)
-          erros++
-          produtosErro.push(cod_produto)
-        }
-      }
-
-      console.log(`✅ Cálculo concluído: ${sucesso} sucesso, ${erros} erros`)
-
       return {
-        success: true,
-        message: `Cálculo concluído com sucesso`,
-        data: {
-          total_produtos: produtos.length,
-          sucesso,
-          erros,
-          produtos_erro: produtosErro.slice(0, 10) // Retornar apenas os 10 primeiros erros
-        }
+        success: resultado.started,
+        message: resultado.message,
+        data: getJobStatus()
       }
-
     } catch (error: any) {
-      console.error('❌ Erro ao calcular todos os produtos:', error)
+      console.error('❌ Erro ao iniciar cálculo batch:', error)
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Erro ao calcular todos os produtos'
+        error: error.message || 'Erro ao iniciar cálculo'
       })
+    }
+  })
+
+  /**
+   * GET /api/estoque-minimo/dinamico/progresso
+   * Retorna progresso do cálculo em tempo real
+   */
+  fastify.get('/estoque-minimo/dinamico/progresso', async (request, reply) => {
+    return {
+      success: true,
+      data: getJobStatus()
     }
   })
 }
