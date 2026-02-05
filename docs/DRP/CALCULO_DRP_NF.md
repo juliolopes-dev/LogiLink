@@ -208,14 +208,14 @@ Necessidade = Meta - Estoque Atual
 - Meta: 2 unidades
 - Necessidade: 2 unidades
 
-#### **Cenário B: NÃO tem estoque mínimo configurado** ⭐ (ATUALIZADO)
+#### **Cenário B: Distribuição para filiais com estoque 0** ⭐ (ATUALIZADO)
 
-**Quando:** Produto sem vendas, sem combinados, e sem estoque mínimo configurado.
+**Quando:** Qualquer filial com estoque = 0 que ainda não tenha necessidade calculada (por vendas, combinados ou estoque mínimo).
 
 **Comportamento:**
 ```
-SEMPRE distribui 1 unidade para filiais com estoque = 0
-(independente de outras filiais terem estoque mínimo configurado)
+SEMPRE distribui 1 unidade para filiais com estoque = 0 e necessidade = 0
+(funciona para TODOS os produtos, independente de outras filiais terem vendas ou estoque mínimo)
 
 Ordem de prioridade:
 1. Petrolina (00)
@@ -228,10 +228,11 @@ Regras:
 - Só distribui se filial tem estoque_atual = 0 E necessidade = 0
 - Distribui até acabar o estoque da NF
 - Marca como "usou_estoque_minimo: true"
-- Garante que filiais zeradas recebam ao menos 1 unidade de produtos novos
+- Garante que filiais zeradas recebam ao menos 1 unidade
+- Funciona mesmo se outras filiais tiverem vendas ou estoque mínimo configurado
 ```
 
-**Exemplo:**
+**Exemplo 1 - Produto sem vendas:**
 ```
 Produto 142672:
 - Qtd NF: 2
@@ -241,11 +242,29 @@ Produto 142672:
 - Estoque atual: 0 (todas filiais)
 
 Distribuição:
-- Petrolina: 1 unidade ✅ (prioridade 1)
-- Juazeiro: 1 unidade ✅ (prioridade 2)
+- Petrolina: 1 unidade ✅ (prioridade 1, estoque 0)
+- Juazeiro: 1 unidade ✅ (prioridade 2, estoque 0)
 - Salgueiro: 0 (sem estoque restante)
 - Bonfim: 0
 - Picos: 0
+```
+
+**Exemplo 2 - Produto com vendas em algumas filiais:**
+```
+Produto 111696:
+- Qtd NF: 2
+- Vendas Petrolina: 0 (estoque: 0)
+- Vendas Juazeiro: 1 (estoque: 1)
+- Vendas Salgueiro: 0 (estoque: 0)
+- Vendas Bonfim: 0 (estoque: 1)
+- Vendas Picos: 0 (estoque: 0)
+
+Distribuição:
+- Petrolina: 1 unidade ✅ (estoque 0, sem vendas → recebe 1)
+- Juazeiro: 0 (tem vendas mas estoque cobre)
+- Salgueiro: 1 unidade ✅ (estoque 0, sem vendas → recebe 1)
+- Bonfim: 0 (sem vendas mas tem estoque)
+- Picos: 0 (sem estoque restante)
 ```
 
 **Vantagens:**
@@ -255,10 +274,16 @@ Distribuição:
 
 **Importante:** Esta é uma solução de fallback. O ideal é configurar estoque mínimo para produtos estratégicos.
 
-**Mudança importante (2026-02-05):**
+**Mudanças importantes (2026-02-05):**
+
+**Versão 1 (commit 27ea6bb):**
 - Anteriormente, só distribuía 1 unidade se NENHUMA filial tivesse estoque mínimo configurado
-- Agora, SEMPRE distribui 1 unidade para filiais com estoque 0, independente de outras filiais terem estoque mínimo
-- Garante que produtos novos ou sem histórico sejam distribuídos para filiais zeradas
+- Mudou para: SEMPRE distribui 1 unidade para filiais com estoque 0, independente de outras filiais terem estoque mínimo
+
+**Versão 2 (commit 48265df) - ATUAL:**
+- Anteriormente, só distribuía quando `necessidadeProduto === 0` (produto sem vendas em nenhuma filial)
+- Agora: SEMPRE distribui 1 unidade para filiais com estoque 0 e necessidade 0, **independente de outras filiais terem vendas**
+- Garante que filiais zeradas recebam produtos mesmo quando outras filiais têm histórico de vendas
 
 ---
 
