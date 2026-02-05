@@ -460,7 +460,6 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
         // Se ainda não tem necessidade (sem vendas E sem combinados), usar estoque mínimo
         if (necessidadeProduto === 0) {
           necessidadeProduto = 0 // Reset
-          let temEstoqueMinimo = false
           
           // Primeiro: verificar se alguma filial tem estoque mínimo configurado
           for (const filial of analisePorFilial) {
@@ -470,13 +469,12 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
               filial.usou_estoque_minimo = true
               filial.necessidade = Math.max(0, filial.estoque_minimo - filial.estoque_atual)
               necessidadeProduto += filial.necessidade
-              temEstoqueMinimo = true
             }
           }
           
-          // Se NENHUMA filial tem estoque mínimo configurado:
-          // Distribuir 1 unidade por filial seguindo prioridade
-          if (!temEstoqueMinimo && estoqueCD > 0) {
+          // SEMPRE distribuir 1 unidade para filiais com estoque 0 (independente de estoque mínimo)
+          // Isso garante que filiais zeradas recebam ao menos 1 unidade de produtos novos
+          if (estoqueCD > 0) {
             const prioridadeFiliais = ['00', '01', '02', '05', '06']
             
             // Ordenar filiais por prioridade
@@ -486,11 +484,11 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
               return prioA - prioB
             })
             
-            // Distribuir 1 unidade por filial até acabar o estoque ou atender todas
+            // Distribuir 1 unidade por filial com estoque 0 que ainda não tem necessidade
             for (const filial of filiaisOrdenadas) {
               if (necessidadeProduto < estoqueCD) {
-                // Só considera necessidade se a filial não tem estoque
-                if (filial.estoque_atual === 0) {
+                // Se filial tem estoque 0 E ainda não tem necessidade calculada
+                if (filial.estoque_atual === 0 && filial.necessidade === 0) {
                   filial.meta = 1
                   filial.necessidade = 1
                   filial.usou_estoque_minimo = true
