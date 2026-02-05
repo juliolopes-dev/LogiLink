@@ -28,10 +28,11 @@ export class DRPProdutoService {
   constructor(private pool: Pool = poolAuditoria) {}
 
   /**
-   * Calcula DRP por Produto com paginação
+   * Calcula DRP por Produto - processa TODOS os produtos de uma vez
+   * A paginação é feita no frontend após receber todos os resultados
    */
   async calcular(request: CalcularDRPProdutoRequest): Promise<ResultadoPaginadoDRP> {
-    const { periodo_dias, filial_origem = CD_FILIAL, filtros, paginacao } = request
+    const { periodo_dias, filial_origem = CD_FILIAL, filtros } = request
 
     // Validar período
     const validacao = validarPeriodo(periodo_dias)
@@ -41,17 +42,12 @@ export class DRPProdutoService {
 
     const origemFilial = filial_origem || CD_FILIAL
 
-    // Paginação: padrão 100 por página, máximo 500
-    const pagina = Math.max(1, paginacao?.pagina || 1)
-    const porPagina = Math.min(500, Math.max(1, paginacao?.por_pagina || 100))
-    const offset = (pagina - 1) * porPagina
-
     // Filiais destino: todas exceto a origem e garantia
     const filiais = (filtros?.filiais || getFiliaisExceto(origemFilial)).filter(
       f => f !== FILIAL_GARANTIA
     )
 
-    console.log(`🔍 Calculando DRP para ${periodo_dias} dias (página ${pagina}, ${porPagina} por página)...`)
+    console.log(`🔍 Calculando DRP para ${periodo_dias} dias - processando TODOS os produtos...`)
 
     // 1. Carregar todos os combinados em memória
     console.log('📦 Carregando combinados...')
@@ -72,19 +68,7 @@ export class DRPProdutoService {
       whereProduto += ` AND (p.cod_produto ILIKE '%${filtros.busca}%' OR p.descricao ILIKE '%${filtros.busca}%')`
     }
 
-    // Primeiro, contar total de produtos para paginação
-    const countResult = await this.pool.query(`
-      SELECT COUNT(DISTINCT p.cod_produto) as total
-      FROM auditoria_integracao.auditoria_produtos_drp p
-      INNER JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
-      ${whereProduto}
-    `)
-    const totalProdutos = parseInt(countResult.rows[0]?.total || '0')
-    const totalPaginas = Math.ceil(totalProdutos / porPagina)
-
-    console.log(`📊 Total: ${totalProdutos} produtos, ${totalPaginas} páginas`)
-    
-    // Buscar produtos da página atual
+    // Buscar TODOS os produtos (sem paginação no backend)
     const produtosResult = await this.pool.query(`
       SELECT DISTINCT
         p.cod_produto,
@@ -96,11 +80,11 @@ export class DRPProdutoService {
       INNER JOIN auditoria_integracao."Estoque_DRP" e ON p.cod_produto = e.cod_produto AND e.cod_filial = '${origemFilial}'
       ${whereProduto}
       ORDER BY p.descricao
-      LIMIT ${porPagina} OFFSET ${offset}
     `)
 
     const produtos = produtosResult.rows
-    console.log(`📊 Processando ${produtos.length} produtos da página ${pagina}`)
+    const totalProdutos = produtos.length
+    console.log(`📊 Processando ${totalProdutos} produtos...`)
 
     const resultados: ProdutoAnalise[] = []
 
@@ -428,17 +412,18 @@ export class DRPProdutoService {
       })
     }
 
-    console.log(`✅ DRP calculado para ${resultados.length} produtos (página ${pagina}/${totalPaginas})`)
+    console.log(`✅ DRP calculado para ${resultados.length} produtos`)
     
+    // Retorna todos os produtos - paginação é feita no frontend
     return {
       produtos: resultados,
       paginacao: {
-        pagina_atual: pagina,
-        por_pagina: porPagina,
+        pagina_atual: 1,
+        por_pagina: totalProdutos,
         total_produtos: totalProdutos,
-        total_paginas: totalPaginas,
-        tem_proxima: pagina < totalPaginas,
-        tem_anterior: pagina > 1
+        total_paginas: 1,
+        tem_proxima: false,
+        tem_anterior: false
       }
     }
   }

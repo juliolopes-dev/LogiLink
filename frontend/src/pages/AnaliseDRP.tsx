@@ -260,31 +260,14 @@ export default function AnaliseDRP() {
   // Estado para exportação XLSX
   const [exportandoXLSX, setExportandoXLSX] = useState(false)
 
-  // Estados para paginação
+  // Estados para paginação LOCAL (todos os produtos são carregados de uma vez)
   const [paginaAtual, setPaginaAtual] = useState(1)
   const porPagina = 100 // Fixo em 100 itens por página
-  const [paginacao, setPaginacao] = useState<{
-    pagina_atual: number
-    por_pagina: number
-    total_produtos: number
-    total_paginas: number
-    tem_proxima: boolean
-    tem_anterior: boolean
-  } | null>(null)
-
-  // Cache de resultados do DRP (todas as páginas carregadas)
-  const [cacheDRP, setCacheDRP] = useState<{
-    filtros: {
-      periodo_dias: number
-      filial_origem: string
-      grupo: string
-      busca: string
-      filiais: string[]
-    }
-    paginas: Record<number, ProdutoAnalise[]>
-    paginacao: typeof paginacao
-    resumo: Resumo | null
-  } | null>(null)
+  const [todosProdutos, setTodosProdutos] = useState<ProdutoAnalise[]>([]) // Todos os produtos calculados
+  
+  // Calcular paginação localmente
+  const totalProdutos = todosProdutos.length
+  const totalPaginas = Math.ceil(totalProdutos / porPagina)
 
   // Buscar grupos para o filtro
   useEffect(() => {
@@ -389,22 +372,22 @@ export default function AnaliseDRP() {
     return () => clearInterval(intervalo)
   }, [etapaLoading, loading])
 
-  // Limpar cache e resetar para nova consulta
+  // Limpar e resetar para nova consulta
   const limparCache = () => {
-    setCacheDRP(null)
     setPaginaAtual(1)
     setCalculado(false)
     setProdutos([])
+    setTodosProdutos([])
     setResumo(null)
-    setPaginacao(null)
   }
 
-  const calcularDRP = async (pagina: number = 1) => {
+  const calcularDRP = async () => {
     setLoading(true)
     setCalculado(false)
     setTempoProcessamento(0)
     setInicioProcessamento(Date.now())
     setEtapaLoading('Carregando combinados...')
+    setPaginaAtual(1) // Resetar para primeira página
 
     try {
       // Simular etapas de loading
@@ -421,11 +404,7 @@ export default function AnaliseDRP() {
           filtros: {
             grupo: grupoSelecionado || undefined,
             busca: busca || undefined,
-            filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
-          },
-          paginacao: {
-            pagina: pagina,
-            por_pagina: porPagina
+            filiais: filiaisSelecionadas.filter((f: string) => f !== filialOrigem)
           }
         })
       })
@@ -434,27 +413,10 @@ export default function AnaliseDRP() {
 
       if (data.success) {
         setResumo(data.resumo)
-        setProdutos(data.produtos)
-        setPaginacao(data.paginacao)
-        setPaginaAtual(pagina)
+        // Armazenar TODOS os produtos - paginação é feita localmente
+        setTodosProdutos(data.produtos)
+        setProdutos(data.produtos.slice(0, porPagina)) // Primeira página
         setCalculado(true)
-
-        // Salvar no cache
-        setCacheDRP(prev => ({
-          filtros: {
-            periodo_dias: periodoDias,
-            filial_origem: filialOrigem,
-            grupo: grupoSelecionado,
-            busca: busca,
-            filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
-          },
-          paginas: {
-            ...(prev?.paginas || {}),
-            [pagina]: data.produtos
-          },
-          paginacao: data.paginacao,
-          resumo: data.resumo
-        }))
       } else {
         alert('Erro ao calcular DRP: ' + data.error)
       }
@@ -475,64 +437,12 @@ export default function AnaliseDRP() {
     }
   }
 
-  // Funções de navegação de página
-  const irParaPagina = async (novaPagina: number) => {
-    if (!paginacao || novaPagina < 1 || novaPagina > paginacao.total_paginas) return
-    
-    // Verificar se a página está no cache
-    if (cacheDRP?.paginas[novaPagina]) {
-      // Usar cache - navegação instantânea
-      setPaginaAtual(novaPagina)
-      setProdutos(cacheDRP.paginas[novaPagina])
-      setPaginacao(prev => prev ? { ...prev, pagina_atual: novaPagina, tem_proxima: novaPagina < prev.total_paginas, tem_anterior: novaPagina > 1 } : null)
-      return
-    }
-    
-    // Página não está no cache - buscar do servidor
+  // Funções de navegação de página (paginação LOCAL - todos os dados já estão carregados)
+  const irParaPagina = (novaPagina: number) => {
+    if (novaPagina < 1 || novaPagina > totalPaginas) return
     setPaginaAtual(novaPagina)
-    setLoading(true)
-    setEtapaLoading('Carregando página...')
-    
-    try {
-      const response = await fetch('/api/drp/calcular', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          periodo_dias: periodoDias,
-          filial_origem: filialOrigem,
-          filtros: {
-            grupo: grupoSelecionado || undefined,
-            busca: busca || undefined,
-            filiais: filiaisSelecionadas.filter(f => f !== filialOrigem)
-          },
-          paginacao: {
-            pagina: novaPagina,
-            por_pagina: porPagina
-          }
-        })
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setResumo(data.resumo)
-        setProdutos(data.produtos)
-        setPaginacao(data.paginacao)
-        
-        // Salvar no cache
-        setCacheDRP(prev => prev ? {
-          ...prev,
-          paginas: {
-            ...prev.paginas,
-            [novaPagina]: data.produtos
-          }
-        } : null)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar página:', error)
-    } finally {
-      setLoading(false)
-    }
+    // Atualizar produtos exibidos com base na página
+    setProdutos(todosProdutos.slice((novaPagina - 1) * porPagina, novaPagina * porPagina))
   }
 
   const paginaAnterior = () => irParaPagina(paginaAtual - 1)
@@ -1053,7 +963,7 @@ export default function AnaliseDRP() {
             ) : 'Calcular DRP'}
           </button>
           
-          {calculado && cacheDRP && (
+          {calculado && todosProdutos.length > 0 && (
             <button
               onClick={limparCache}
               className="btn btn-outline w-full md:w-auto"
@@ -2138,17 +2048,17 @@ export default function AnaliseDRP() {
             </table>
           </div>
 
-          {/* Paginação */}
-          {paginacao && paginacao.total_paginas > 1 && (
+          {/* Paginação LOCAL */}
+          {totalPaginas > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
               <div className="text-sm text-slate-600">
-                Mostrando <strong>{produtos.length}</strong> de <strong>{paginacao.total_produtos}</strong> produtos
-                {' '}(Página {paginacao.pagina_atual} de {paginacao.total_paginas})
+                Mostrando <strong>{produtos.length}</strong> de <strong>{totalProdutos}</strong> produtos
+                {' '}(Página {paginaAtual} de {totalPaginas})
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={paginaAnterior}
-                  disabled={!paginacao.tem_anterior || loading}
+                  disabled={paginaAtual <= 1 || loading}
                   className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ← Anterior
@@ -2156,16 +2066,16 @@ export default function AnaliseDRP() {
                 
                 {/* Números das páginas */}
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, paginacao.total_paginas) }, (_, i) => {
+                  {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
                     let pageNum: number
-                    if (paginacao.total_paginas <= 5) {
+                    if (totalPaginas <= 5) {
                       pageNum = i + 1
-                    } else if (paginacao.pagina_atual <= 3) {
+                    } else if (paginaAtual <= 3) {
                       pageNum = i + 1
-                    } else if (paginacao.pagina_atual >= paginacao.total_paginas - 2) {
-                      pageNum = paginacao.total_paginas - 4 + i
+                    } else if (paginaAtual >= totalPaginas - 2) {
+                      pageNum = totalPaginas - 4 + i
                     } else {
-                      pageNum = paginacao.pagina_atual - 2 + i
+                      pageNum = paginaAtual - 2 + i
                     }
                     
                     return (
@@ -2174,7 +2084,7 @@ export default function AnaliseDRP() {
                         onClick={() => irParaPagina(pageNum)}
                         disabled={loading}
                         className={`px-3 py-1.5 text-sm font-medium rounded-md ${
-                          pageNum === paginacao.pagina_atual
+                          pageNum === paginaAtual
                             ? 'bg-primary text-white'
                             : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
                         } disabled:opacity-50`}
@@ -2187,7 +2097,7 @@ export default function AnaliseDRP() {
 
                 <button
                   onClick={proximaPagina}
-                  disabled={!paginacao.tem_proxima || loading}
+                  disabled={paginaAtual >= totalPaginas || loading}
                   className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Próxima →
