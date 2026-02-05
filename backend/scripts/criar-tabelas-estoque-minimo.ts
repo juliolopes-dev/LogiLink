@@ -8,9 +8,7 @@
  * - estoque_minimo_historico: Histórico de alterações para auditoria
  */
 
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import poolAuditoria from '../src/lib/database-auditoria'
 
 async function main() {
   console.log('🚀 Iniciando criação das tabelas de Estoque Mínimo...')
@@ -20,7 +18,7 @@ async function main() {
     // 1. Criar tabela estoque_minimo
     console.log('\n📦 Criando tabela estoque_minimo...')
     
-    await prisma.$executeRawUnsafe(`
+    await poolAuditoria.query(`
       CREATE TABLE IF NOT EXISTS estoque_minimo (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         cod_produto VARCHAR(20) NOT NULL,
@@ -75,14 +73,14 @@ async function main() {
     ]
     
     for (const indice of indices) {
-      await prisma.$executeRawUnsafe(indice.sql)
+      await poolAuditoria.query(indice.sql)
       console.log(`  ✅ ${indice.nome}`)
     }
 
     // 3. Criar tabela estoque_minimo_historico
     console.log('\n📜 Criando tabela estoque_minimo_historico...')
     
-    await prisma.$executeRawUnsafe(`
+    await poolAuditoria.query(`
       CREATE TABLE IF NOT EXISTS estoque_minimo_historico (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         cod_produto VARCHAR(20) NOT NULL,
@@ -127,33 +125,33 @@ async function main() {
     ]
     
     for (const indice of indicesHistorico) {
-      await prisma.$executeRawUnsafe(indice.sql)
+      await poolAuditoria.query(indice.sql)
       console.log(`  ✅ ${indice.nome}`)
     }
 
     // 5. Verificar se as tabelas foram criadas
     console.log('\n🔍 Verificando tabelas criadas...')
     
-    const tabelasResult = await prisma.$queryRaw<{ tablename: string }[]>`
+    const tabelasResult = await poolAuditoria.query(`
       SELECT tablename 
       FROM pg_tables 
       WHERE schemaname = 'public' 
       AND tablename IN ('estoque_minimo', 'estoque_minimo_historico')
-    `
+    `)
     
-    console.log(`  📋 Tabelas encontradas: ${tabelasResult.map(t => t.tablename).join(', ')}`)
+    console.log(`  📋 Tabelas encontradas: ${tabelasResult.rows.map((t: any) => t.tablename).join(', ')}`)
 
     // 6. Contar registros (deve ser 0)
-    const countEstoqueMinimo = await prisma.$queryRaw<{ count: bigint }[]>`
+    const countEstoqueMinimo = await poolAuditoria.query(`
       SELECT COUNT(*) as count FROM estoque_minimo
-    `
+    `)
     
-    const countHistorico = await prisma.$queryRaw<{ count: bigint }[]>`
+    const countHistorico = await poolAuditoria.query(`
       SELECT COUNT(*) as count FROM estoque_minimo_historico
-    `
+    `)
     
-    console.log(`  📊 Registros em estoque_minimo: ${countEstoqueMinimo[0].count}`)
-    console.log(`  📊 Registros em estoque_minimo_historico: ${countHistorico[0].count}`)
+    console.log(`  📊 Registros em estoque_minimo: ${countEstoqueMinimo.rows[0].count}`)
+    console.log(`  📊 Registros em estoque_minimo_historico: ${countHistorico.rows[0].count}`)
 
     console.log('\n' + '=' .repeat(60))
     console.log('✅ Migração concluída com sucesso!')
@@ -176,6 +174,6 @@ main()
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
+    await poolAuditoria.end()
     console.log('\n👋 Conexão com banco de dados encerrada.')
   })
