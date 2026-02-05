@@ -1,7 +1,7 @@
-import { FiHome, FiPackage, FiTrendingUp, FiShoppingCart, FiFileText, FiSettings, FiLayers } from 'react-icons/fi'
+import { FiHome, FiPackage, FiTrendingUp, FiShoppingCart, FiFileText, FiSettings, FiLayers, FiBarChart2 } from 'react-icons/fi'
 import { Logo } from './Logo'
 
-type Page = 'dashboard' | 'produtos' | 'drp' | 'combinados' | 'sugestoes' | 'relatorios' | 'configuracoes'
+type Page = 'dashboard' | 'produtos' | 'drp' | 'combinados' | 'sugestoes' | 'relatorios' | 'configuracoes' | 'estoque-minimo'
 
 interface SidebarProps {
   currentPage: Page
@@ -12,6 +12,7 @@ const menuItems: Array<{ id: Page; icon: typeof FiHome; label: string }> = [
   { id: 'dashboard', icon: FiHome, label: 'Dashboard' },
   { id: 'produtos', icon: FiPackage, label: 'SKUs' },
   { id: 'drp', icon: FiTrendingUp, label: 'Análise DRP' },
+  { id: 'estoque-minimo', icon: FiBarChart2, label: 'Estoque Mínimo' },
   { id: 'combinados', icon: FiLayers, label: 'Produtos Combinados' },
   { id: 'sugestoes', icon: FiShoppingCart, label: 'Sugestões de Compra' },
   { id: 'relatorios', icon: FiFileText, label: 'Relatórios' },
