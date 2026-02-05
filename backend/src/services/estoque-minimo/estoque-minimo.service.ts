@@ -255,7 +255,7 @@ async function buscarEstoqueMinimoAtual(
 ): Promise<number | null> {
   const result = await poolAuditoria.query(`
     SELECT estoque_minimo_ativo
-    FROM estoque_minimo
+    FROM auditoria_integracao.estoque_minimo
     WHERE cod_produto = $1 AND cod_filial = $2
   `, [cod_produto, cod_filial])
   
@@ -348,7 +348,7 @@ export async function calcularEstoqueMinimoFilial(
 export async function salvarEstoqueMinimo(resultado: ResultadoCalculo): Promise<void> {
   // Upsert na tabela estoque_minimo
   await poolAuditoria.query(`
-    INSERT INTO estoque_minimo (
+    INSERT INTO auditoria_integracao.estoque_minimo (
       cod_produto, cod_filial, estoque_minimo_calculado, estoque_minimo_ativo,
       media_vendas_diarias, lead_time_dias, buffer_dias, fator_seguranca,
       fator_tendencia, fator_sazonal, classe_abc,
@@ -359,8 +359,8 @@ export async function salvarEstoqueMinimo(resultado: ResultadoCalculo): Promise<
     DO UPDATE SET
       estoque_minimo_calculado = $3,
       estoque_minimo_ativo = CASE 
-        WHEN estoque_minimo.estoque_minimo_manual IS NOT NULL 
-        THEN estoque_minimo.estoque_minimo_manual 
+        WHEN auditoria_integracao.estoque_minimo.estoque_minimo_manual IS NOT NULL 
+        THEN auditoria_integracao.estoque_minimo.estoque_minimo_manual 
         ELSE $3 
       END,
       media_vendas_diarias = $4,
@@ -393,7 +393,7 @@ export async function salvarEstoqueMinimo(resultado: ResultadoCalculo): Promise<
   
   // Salvar histórico
   await poolAuditoria.query(`
-    INSERT INTO estoque_minimo_historico (
+    INSERT INTO auditoria_integracao.estoque_minimo_historico (
       cod_produto, cod_filial, estoque_minimo_anterior, estoque_minimo_novo,
       variacao_percentual, media_vendas_diarias, lead_time_dias, buffer_dias,
       fator_seguranca, fator_tendencia, fator_sazonal, classe_abc,
@@ -445,7 +445,7 @@ export async function buscarEstoqueMinimo(
 ): Promise<any> {
   const result = await poolAuditoria.query(`
     SELECT *
-    FROM estoque_minimo
+    FROM auditoria_integracao.estoque_minimo
     WHERE cod_produto = $1 AND cod_filial = $2
   `, [cod_produto, cod_filial])
   
@@ -462,7 +462,7 @@ export async function buscarHistoricoEstoqueMinimo(
 ): Promise<any[]> {
   const result = await poolAuditoria.query(`
     SELECT *
-    FROM estoque_minimo_historico
+    FROM auditoria_integracao.estoque_minimo_historico
     WHERE cod_produto = $1 AND cod_filial = $2
     ORDER BY data_calculo DESC
     LIMIT $3
@@ -487,7 +487,7 @@ export async function ajustarEstoqueMinimoManual(
   
   // Atualizar
   await poolAuditoria.query(`
-    UPDATE estoque_minimo
+    UPDATE auditoria_integracao.estoque_minimo
     SET 
       estoque_minimo_manual = $3,
       estoque_minimo_ativo = $3,
@@ -505,7 +505,7 @@ export async function ajustarEstoqueMinimoManual(
   
   // Salvar histórico
   await poolAuditoria.query(`
-    INSERT INTO estoque_minimo_historico (
+    INSERT INTO auditoria_integracao.estoque_minimo_historico (
       cod_produto, cod_filial, estoque_minimo_anterior, estoque_minimo_novo,
       variacao_percentual, data_calculo, metodo, usuario, observacao
     ) VALUES ($1, $2, $3, $4, $5, NOW(), 'manual', $6, $7)
@@ -523,7 +523,7 @@ export async function listarProdutosAbaixoMinimo(
     SELECT 
       em.*,
       e.estoque_atual
-    FROM estoque_minimo em
+    FROM auditoria_integracao.estoque_minimo em
     LEFT JOIN auditoria_integracao."Estoque" e 
       ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
     WHERE e.estoque_atual < em.estoque_minimo_ativo
@@ -561,7 +561,7 @@ export async function resumoEstoqueMinimoFilial(cod_filial: string): Promise<any
       COUNT(*) FILTER (WHERE classe_abc = 'B') as produtos_classe_b,
       COUNT(*) FILTER (WHERE classe_abc = 'C') as produtos_classe_c,
       SUM(estoque_minimo_ativo) as soma_estoque_minimo
-    FROM estoque_minimo
+    FROM auditoria_integracao.estoque_minimo
     WHERE cod_filial = $1
   `, [cod_filial])
   

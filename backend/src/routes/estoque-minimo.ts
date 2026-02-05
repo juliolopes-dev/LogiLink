@@ -271,7 +271,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
 
       const result = await poolAuditoria.query(`
         SELECT *
-        FROM estoque_minimo
+        FROM auditoria_integracao.estoque_minimo
         WHERE cod_produto = $1 AND cod_filial = $2
       `, [cod_produto, cod_filial])
 
@@ -316,7 +316,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
         SELECT em.*, 
           e.estoque as estoque_atual,
           CASE WHEN e.estoque < em.estoque_minimo_ativo THEN true ELSE false END as abaixo_minimo
-        FROM estoque_minimo em
+        FROM auditoria_integracao.estoque_minimo em
         LEFT JOIN auditoria_integracao."Estoque_DRP" e 
           ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
         WHERE em.cod_filial = $1
@@ -337,7 +337,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
       const result = await poolAuditoria.query(query, params)
 
       // Contar total
-      let countQuery = `SELECT COUNT(*) as total FROM estoque_minimo WHERE cod_filial = $1`
+      let countQuery = `SELECT COUNT(*) as total FROM auditoria_integracao.estoque_minimo WHERE cod_filial = $1`
       const countParams: any[] = [cod_filial]
       if (classe_abc) {
         countQuery += ` AND classe_abc = $2`
@@ -485,7 +485,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
 
       const result = await poolAuditoria.query(`
         SELECT *
-        FROM estoque_minimo_historico
+        FROM auditoria_integracao.estoque_minimo_historico
         WHERE cod_produto = $1 AND cod_filial = $2
         ORDER BY data_calculo DESC
         LIMIT $3
@@ -521,7 +521,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
           e.estoque as estoque_atual,
           (em.estoque_minimo_ativo - e.estoque) as deficit,
           p.descricao
-        FROM estoque_minimo em
+        FROM auditoria_integracao.estoque_minimo em
         LEFT JOIN auditoria_integracao."Estoque_DRP" e 
           ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
         LEFT JOIN auditoria_integracao.auditoria_produtos_drp p
@@ -588,7 +588,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
           COUNT(*) FILTER (WHERE classe_abc = 'C') as produtos_classe_c,
           SUM(estoque_minimo_ativo) as soma_estoque_minimo,
           MAX(data_calculo) as ultimo_calculo
-        FROM estoque_minimo
+        FROM auditoria_integracao.estoque_minimo
         WHERE cod_filial = $1
       `, [cod_filial])
 
@@ -599,7 +599,7 @@ export async function estoqueMinRoutes(fastify: FastifyInstance) {
           COUNT(*) FILTER (WHERE em.classe_abc = 'A') as classe_a,
           COUNT(*) FILTER (WHERE em.classe_abc = 'B') as classe_b,
           COUNT(*) FILTER (WHERE em.classe_abc = 'C') as classe_c
-        FROM estoque_minimo em
+        FROM auditoria_integracao.estoque_minimo em
         LEFT JOIN auditoria_integracao."Estoque_DRP" e 
           ON em.cod_produto = e.cod_produto AND em.cod_filial = e.cod_filial
         WHERE em.cod_filial = $1
