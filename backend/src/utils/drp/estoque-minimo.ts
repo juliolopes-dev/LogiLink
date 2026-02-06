@@ -23,7 +23,7 @@ export async function buscarEstoqueMinimoAtualizado(
       FROM auditoria_integracao.estoque_minimo
       WHERE cod_produto = $1 
         AND cod_filial = $2
-        AND manual = false
+        AND metodo = 'automatico'
       ORDER BY data_calculo DESC
       LIMIT 1
     `, [codProduto, codFilial])
