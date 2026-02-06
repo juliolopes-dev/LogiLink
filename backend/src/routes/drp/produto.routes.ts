@@ -14,6 +14,7 @@ import poolAuditoria from '../../lib/database-auditoria'
 import { CD_FILIAL, FILIAL_GARANTIA } from '../../utils/drp'
 import * as XLSX from 'xlsx'
 import { calcularFrequenciaSaida } from '../../utils/drp/frequencia-saida'
+import { enviarWebhookPedido } from '../../utils/webhook-pedido'
 
 const FILIAIS_MAP: Record<string, string> = {
   '00': 'Petrolina',
@@ -441,6 +442,15 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
 
         console.log(`✅ Pedido ${numeroPedido} criado para ${nomeFilial}: ${totalItens} itens, ${totalQuantidade} unidades`)
       }
+
+      // Enviar webhook para n8n (fire and forget)
+      enviarWebhookPedido({
+        origem: 'DRP-PROD',
+        numero_nf_origem: 'DRP-PROD',
+        fornecedor: null,
+        usuario: usuario || 'Sistema',
+        pedidos: pedidosCriados
+      })
 
       return reply.send({
         success: true,

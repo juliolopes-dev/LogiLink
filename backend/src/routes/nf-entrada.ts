@@ -8,6 +8,7 @@ import {
 import poolAuditoria from '../lib/database-auditoria.js'
 import prisma from '../lib/prisma'
 import * as XLSX from 'xlsx'
+import { enviarWebhookPedido } from '../utils/webhook-pedido'
 
 /**
  * Busca estoque mínimo dinâmico (novo sistema) com fallback para tabela antiga
@@ -859,6 +860,15 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
 
         console.log(`✅ Pedido ${numeroPedido} criado para ${nomeFilial}: ${totalItens} itens, ${totalQuantidade} unidades`)
       }
+
+      // Enviar webhook para n8n (fire and forget)
+      enviarWebhookPedido({
+        origem: 'DRP-NF',
+        numero_nf_origem: numero_nota,
+        fornecedor: nomeFornecedor,
+        usuario: usuario || 'Sistema',
+        pedidos: pedidosCriados
+      })
 
       return reply.send({
         success: true,
