@@ -317,7 +317,7 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
    * POST /api/drp/gerar-pedidos
    * Gerar pedidos para cada filial a partir do DRP por Produto calculado
    */
-  fastify.post('/api/drp/gerar-pedidos', async (request, reply) => {
+  fastify.post('/api/drp/gerar-pedidos', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     try {
       const { produtos, usuario, filial_origem } = request.body as {
         filial_origem: string
