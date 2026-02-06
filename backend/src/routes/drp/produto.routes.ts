@@ -406,14 +406,18 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
         )
         const numeroPedido = numeroPedidoResult.rows[0].numero
 
-        // Inserir pedido (sem NF de origem, pois é DRP por Produto)
+        // Gerar identificador para numero_nf_origem (DRP por Produto não tem NF real)
+        const agora = new Date()
+        const nfOrigem = `DRP-PROD-${agora.getFullYear()}${String(agora.getMonth() + 1).padStart(2, '0')}${String(agora.getDate()).padStart(2, '0')}-${String(agora.getHours()).padStart(2, '0')}${String(agora.getMinutes()).padStart(2, '0')}${String(agora.getSeconds()).padStart(2, '0')}`
+
+        // Inserir pedido
         const pedidoResult = await poolAuditoria.query(`
           INSERT INTO auditoria_integracao."Pedido_DRP" (
             numero_pedido, numero_nf_origem, cod_filial_destino, nome_filial_destino,
             usuario, total_itens, total_quantidade, status, cod_fornecedor, nome_fornecedor
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', NULL, $8)
           RETURNING id
-        `, [numeroPedido, null, codFilial, nomeFilial, usuario || 'Sistema', totalItens, totalQuantidade, `DRP Produto - Origem: ${nomeOrigem}`])
+        `, [numeroPedido, nfOrigem, codFilial, nomeFilial, usuario || 'Sistema', totalItens, totalQuantidade, `DRP Produto - Origem: ${nomeOrigem}`])
 
         const pedidoId = pedidoResult.rows[0].id
 
