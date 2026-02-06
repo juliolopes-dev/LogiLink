@@ -17,6 +17,8 @@ interface DadosWebhookPedido {
   tipo: 'pedido_drp'
   origem: 'DRP-NF' | 'DRP-PROD'
   numero_nf_origem: string
+  filial_origem: string
+  nome_filial_origem: string
   fornecedor?: string | null
   usuario: string
   data: string
@@ -45,6 +47,8 @@ function getDataBrasil(): string {
 export async function enviarWebhookPedido(dados: {
   origem: 'DRP-NF' | 'DRP-PROD'
   numero_nf_origem: string
+  filial_origem: string
+  nome_filial_origem: string
   fornecedor?: string | null
   usuario: string
   pedidos: PedidoWebhook[]
@@ -54,6 +58,8 @@ export async function enviarWebhookPedido(dados: {
       tipo: 'pedido_drp',
       origem: dados.origem,
       numero_nf_origem: dados.numero_nf_origem,
+      filial_origem: dados.filial_origem,
+      nome_filial_origem: dados.nome_filial_origem,
       fornecedor: dados.fornecedor || null,
       usuario: dados.usuario,
       data: getDataBrasil(),

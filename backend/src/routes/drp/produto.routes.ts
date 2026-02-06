@@ -447,6 +447,8 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
       enviarWebhookPedido({
         origem: 'DRP-PROD',
         numero_nf_origem: 'DRP-PROD',
+        filial_origem: filial_origem,
+        nome_filial_origem: nomeOrigem,
         fornecedor: null,
         usuario: usuario || 'Sistema',
         pedidos: pedidosCriados

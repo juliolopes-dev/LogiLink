@@ -865,6 +865,8 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
       enviarWebhookPedido({
         origem: 'DRP-NF',
         numero_nf_origem: numero_nota,
+        filial_origem: '04',
+        nome_filial_origem: 'CD',
         fornecedor: nomeFornecedor,
         usuario: usuario || 'Sistema',
         pedidos: pedidosCriados
