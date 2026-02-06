@@ -20,6 +20,9 @@ Calcular automaticamente o estoque mínimo ideal para cada produto **por filial*
 - ✅ Estoque otimizado para cada realidade de filial
 - ✅ Recálculo automático mensal
 - ✅ Histórico de alterações para auditoria
+- ✅ Integrado ao DRP por NF de Entrada (usa estoque mínimo dinâmico com fallback)
+- ✅ Processamento em background com progresso em tempo real
+- ✅ ~27.000 produtos calculados em ~15 minutos (batch otimizado)
 
 ---
 
@@ -322,33 +325,52 @@ CREATE INDEX idx_estoque_minimo_hist_data ON estoque_minimo_historico(data_calcu
 
 ## 🔄 Fluxo de Recálculo
 
-### Job Mensal Automático
+### Background Job em Batch (Implementado)
+
+O cálculo de todos os produtos roda em **background** com processamento otimizado em batch:
 
 ```
-Execução: Todo dia 1 do mês às 02:00 (horário de baixo uso)
+Fluxo (executado via interface em Configurações > Estoque Mínimo):
 
-Fluxo:
-1. Buscar todos os produtos ativos
-2. Para cada produto:
-   a. Para cada filial:
-      - Buscar vendas (180 dias)
-      - Classificar ABC
-      - Calcular tendência
-      - Calcular sazonalidade
-      - Aplicar fórmula
-      - Salvar resultado
-      - Salvar histórico
-3. Gerar relatório de alterações significativas (>50%)
-4. Enviar notificação se houver alertas
+FASE 1 - Buscar Produtos (~1s)
+  → Busca produtos com vendas nos últimos 180 dias (tipo_movimento = '55')
+  → Filtra produtos com pelo menos 1 venda no período
+  → Exclui filial '03' (CD)
+  → Resultado: ~27.000 produtos
+
+FASE 2 - Pré-Cálculos em Batch (~16s)
+  → Classificação ABC: 1 query por filial (5 queries total)
+  → Vendas 180/90 dias: 2 queries totais para TODOS os produtos
+  → Sazonalidade: 2 queries totais para TODOS os produtos
+  → Total: ~9 queries (antes eram ~810.000 queries!)
+
+FASE 3 - Processamento Paralelo (~10-15min)
+  → Lotes de 50 produtos processados em paralelo
+  → Cálculo usando dados do cache (sem queries adicionais)
+  → Salvamento paralelo (20 upserts simultâneos)
+  → Progresso em tempo real via polling (a cada 2s)
+
+FASE 4 - Finalização
+  → Log de conclusão com tempo total e estatísticas
+  → Frontend exibe resultado final
 ```
+
+### Performance
+
+| Métrica | Antes (Sequencial) | Depois (Batch) |
+|---------|-------------------|----------------|
+| **Queries por produto** | ~8 | 0 (pré-calculado) |
+| **Queries totais** | ~810.000 | ~9 |
+| **Tempo estimado** | ~135 horas | **~15 minutos** |
+| **Bloqueio da API** | Sim | Não (background) |
 
 ### Recálculo Manual (Sob Demanda)
 
 ```
 Gatilhos:
-- Usuário solicita recálculo de um produto
-- Mudança significativa detectada (vendas subiram/caíram muito)
-- Novo produto cadastrado (após 30 dias de vendas)
+- Usuário clica "Calcular Todos" em Configurações > Estoque Mínimo
+- Recálculo individual de um produto via API
+- Recomendado: recalcular mensalmente
 ```
 
 ---
@@ -437,17 +459,54 @@ Ajusta manualmente o estoque mínimo.
 
 Retorna histórico de alterações do estoque mínimo.
 
-### POST /api/estoque-minimo/recalcular-todos
+### POST /api/estoque-minimo/dinamico/calcular-todos
 
-Recalcula todos os produtos (job manual).
+Inicia cálculo em **background** de todos os produtos (não bloqueia).
 
-**Request:**
+**Request:** Sem body (POST vazio)
+
+**Response:**
 ```json
 {
-  "filial": "00",  // Opcional: se não informar, recalcula todas
-  "classe_abc": "A"  // Opcional: filtrar por classe
+  "success": true,
+  "message": "Cálculo iniciado em background",
+  "data": {
+    "id": "1738780000000",
+    "status": "running",
+    "total_produtos": 27001,
+    "processados": 0,
+    "sucesso": 0,
+    "erros": 0,
+    "mensagem": "Iniciando..."
+  }
 }
 ```
+
+### GET /api/estoque-minimo/dinamico/progresso
+
+Retorna progresso do cálculo em tempo real (polling a cada 2s pelo frontend).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "1738780000000",
+    "status": "running",
+    "total_produtos": 27001,
+    "processados": 15000,
+    "sucesso": 14998,
+    "erros": 2,
+    "produtos_erro": ["PROD001", "PROD002"],
+    "inicio": "2026-02-05T17:00:00.000Z",
+    "fim": null,
+    "mensagem": "Calculando... 15000/27001 (1200 prod/s)",
+    "tempo_estimado_restante": "10min"
+  }
+}
+```
+
+**Status possíveis:** `idle` | `running` | `completed` | `error`
 
 ---
 
@@ -498,16 +557,42 @@ Recalcula todos os produtos (job manual).
 
 ## 🔗 Integração com DRP
 
-O estoque mínimo calculado é usado no DRP para determinar a necessidade de cada filial:
+O estoque mínimo dinâmico está integrado em **ambos os tipos de DRP** através de uma função compartilhada (`backend/src/utils/drp/estoque-minimo.ts`).
+
+### Como funciona
 
 ```typescript
-// No cálculo do DRP
-const estoqueMinimo = await buscarEstoqueMinimoFilial(cod_produto, cod_filial)
-const estoqueAtual = await buscarEstoqueAtual(cod_produto, cod_filial)
+// Função buscarEstoqueMinimoAtualizado(codProduto, codFilial, pool)
+// 1º - Busca do NOVO sistema dinâmico (tabela estoque_minimo)
+SELECT estoque_minimo_calculado
+FROM auditoria_integracao.estoque_minimo
+WHERE cod_produto = $1 AND cod_filial = $2 AND manual = false
+ORDER BY data_calculo DESC LIMIT 1
 
-// Necessidade = Estoque Mínimo - Estoque Atual
-const necessidade = Math.max(0, estoqueMinimo - estoqueAtual)
+// 2º - Se não encontrar, busca da tabela ANTIGA (fallback)
+SELECT estoque_minimo
+FROM auditoria_integracao."Estoque_DRP"
+WHERE cod_produto = $1 AND cod_filial = $2
 ```
+
+### Onde está integrado
+- ✅ **DRP por NF de Entrada** - Calcula necessidade das filiais destino
+- ✅ **DRP por Produto** - Calcula necessidade das filiais destino + proteção da filial de origem
+
+### Proteção da Filial de Origem (DRP por Produto)
+
+Quando a filial de origem **não é o CD**, o sistema usa o estoque mínimo dinâmico para reservar estoque na origem:
+
+```
+estoqueDisponivel = estoqueOrigem - estoqueMinimoOrigem
+```
+
+Exemplo: Petrolina com 50 de estoque e 20 de estoque mínimo → só distribui 30.
+
+### Vantagem do fallback
+- Produtos com cálculo dinâmico → usa valor otimizado (ABC + tendência + sazonalidade)
+- Produtos sem cálculo → usa valor da tabela antiga (sem quebrar nada)
+- Transição suave e gradual
 
 ---
 
@@ -597,23 +682,48 @@ if (vendas_filial === 0 && vendas_outras_filiais > 0) {
 
 ## 📅 Cronograma de Recálculo
 
-| Classe | Frequência | Dia/Hora |
-|--------|-----------|----------|
-| **A** | Quinzenal | Dias 1 e 15, 02:00 |
-| **B** | Mensal | Dia 1, 02:00 |
-| **C** | Mensal | Dia 1, 02:00 |
+| Classe | Frequência | Como |
+|--------|-----------|------|
+| **Todos** | Mensal (recomendado) | Via interface: Configurações > Estoque Mínimo |
+| **Individual** | Sob demanda | Via API: POST /api/estoque-minimo/recalcular |
 
 ---
 
 ## 🔒 Auditoria
 
 Todas as alterações são registradas no histórico:
-- Recálculos automáticos
-- Ajustes manuais
+- Recálculos automáticos (batch)
+- Ajustes manuais (por usuário)
 - Mudanças de classe ABC
 - Variações significativas
 
 ---
 
+## 📁 Arquivos do Projeto
+
+### Backend
+| Arquivo | Descrição |
+|---------|-----------|
+| `backend/src/services/estoque-minimo/estoque-minimo.service.ts` | Service principal (cálculo individual por produto/filial) |
+| `backend/src/services/estoque-minimo/estoque-minimo-batch.service.ts` | Background job otimizado (batch de todos os produtos) |
+| `backend/src/routes/estoque-minimo.ts` | Endpoints da API (calcular, buscar, ajustar, progresso) |
+| `backend/src/utils/drp/estoque-minimo.ts` | Função compartilhada `buscarEstoqueMinimoAtualizado` (usada por DRP NF e DRP Produto) |
+| `backend/src/routes/nf-entrada.ts` | Integração com DRP por NF |
+| `backend/src/services/drp/produto.service.ts` | Integração com DRP por Produto + proteção filial origem |
+
+### Frontend
+| Arquivo | Descrição |
+|---------|-----------|
+| `frontend/src/pages/EstoqueMinimoConfig.tsx` | Interface de configuração com barra de progresso em tempo real |
+| `frontend/src/pages/Configuracoes.tsx` | Menu lateral que inclui o item "Estoque Mínimo" |
+
+### Banco de Dados
+| Tabela | Schema |
+|--------|--------|
+| `auditoria_integracao.estoque_minimo` | Estoque mínimo atual por produto/filial |
+| `auditoria_integracao.estoque_minimo_historico` | Histórico de alterações |
+
+---
+
 *Documentação criada em: 05/Fevereiro/2026*
-*Última atualização: 05/Fevereiro/2026*
+*Última atualização: 06/Fevereiro/2026*

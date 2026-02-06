@@ -8,6 +8,8 @@ O **Cálculo DRP por Produto** calcula a distribuição de produtos de uma filia
 - Necessidade calculada (meta - estoque atual)
 - Múltiplos de venda configurados
 - Produtos combinados (quando não há histórico individual)
+- **Estoque mínimo dinâmico** (cálculo automático ABC + tendência + sazonalidade, com fallback)
+- **Proteção da filial de origem** (quando não é CD, reserva estoque mínimo)
 
 ## 🎯 Objetivo
 
@@ -120,8 +122,13 @@ Se vendas_periodo = 0 E tem grupo combinado:
   flag: usou_combinado = true
 ```
 
-**Prioridade 3 - Estoque Mínimo:**
+**Prioridade 3 - Estoque Mínimo Dinâmico:**
 ```
+// Busca com fallback:
+// 1º → tabela estoque_minimo (cálculo automático ABC + tendência + sazonalidade)
+// 2º → tabela Estoque_DRP (valor antigo, fallback)
+estoque_minimo = buscarEstoqueMinimoAtualizado(cod_produto, cod_filial)
+
 meta = Math.max(meta_base, estoque_minimo)
 
 Se estoque_minimo > meta_base:
@@ -186,15 +193,40 @@ arredondarMultiplo(valor: number, multiplo: number): number {
 }
 ```
 
-### 5. Status de Distribuição
+### 5. Proteção da Filial de Origem
 
-- **`ok`**: Estoque CD >= necessidade total (atende 100%)
-- **`rateio`**: Estoque CD < necessidade total (distribui proporcionalmente)
-- **`deficit`**: Estoque CD = 0 (não pode distribuir)
+Quando a filial de origem **não é o CD**, o sistema reserva o estoque mínimo da origem antes de distribuir:
 
-### 6. Distribuição quando Estoque Insuficiente (Rateio)
+```typescript
+// CD (04): distribui todo o estoque (é a função dele)
+if (origemFilial === CD_FILIAL) {
+  estoqueDisponivel = estoqueOrigem
+}
 
-Quando o estoque do CD é menor que a necessidade total, a distribuição é **proporcional à necessidade de cada filial**:
+// Outras filiais: reserva estoque mínimo
+if (origemFilial !== CD_FILIAL) {
+  estMinOrigem = buscarEstoqueMinimoAtualizado(cod_produto, filial_origem)
+  estoqueDisponivel = Math.max(0, estoqueOrigem - estMinOrigem)
+}
+```
+
+**Exemplo:**
+
+| Origem | Estoque | Est. Mínimo | Disponível p/ distribuir |
+|--------|---------|-------------|-------------------------|
+| **CD** | 50 | - | **50** (tudo) |
+| **Petrolina** | 50 | 20 | **30** (mantém 20) |
+| **Juazeiro** | 50 | 15 | **35** (mantém 15) |
+
+### 6. Status de Distribuição
+
+- **`ok`**: Estoque disponível >= necessidade total (atende 100%)
+- **`rateio`**: Estoque disponível < necessidade total (distribui proporcionalmente)
+- **`deficit`**: Estoque disponível = 0 (não pode distribuir)
+
+### 7. Distribuição quando Estoque Insuficiente (Rateio)
+
+Quando o estoque disponível é menor que a necessidade total, a distribuição é **proporcional à necessidade de cada filial**:
 
 ```typescript
 // Cada filial recebe proporcionalmente à sua necessidade
@@ -296,6 +328,56 @@ for (const filial of analisePorFilial) {
 - Estoque combinado = 15
 - Necessidade = 100 - 15 = 85
 
+## 📦 Geração de Pedidos
+
+### Endpoint
+
+```
+POST /api/drp/gerar-pedidos
+```
+
+### Lotes de 30 SKUs
+
+Ao gerar pedidos, o sistema divide os itens de cada filial em **lotes de 30 SKUs**:
+
+```
+Exemplo: Petrolina com 80 itens
+→ PED-00-0001 (30 SKUs)
+→ PED-00-0002 (30 SKUs)
+→ PED-00-0003 (20 SKUs)
+```
+
+### Dados Salvos no Banco
+
+Tabela `Pedido_DRP`:
+- `numero_pedido` — Número sequencial por filial
+- `numero_nf_origem` — `DRP-PROD` (identificador fixo)
+- `cod_filial_origem` / `nome_filial_origem` — Filial de onde saem os produtos
+- `cod_filial_destino` / `nome_filial_destino` — Filial que recebe
+- `usuario`, `status`, `total_itens`, `total_quantidade`
+
+### Webhook (n8n)
+
+Após gerar os pedidos, o sistema envia **1 webhook por pedido** para o n8n com delay de 2 segundos entre cada disparo:
+
+```json
+{
+  "tipo": "pedido_drp",
+  "origem": "DRP-PROD",
+  "filial_origem": "04",
+  "nome_filial_origem": "CD",
+  "pedido": {
+    "numero_pedido": "PED-00-0001",
+    "cod_filial": "00",
+    "nome_filial": "Petrolina",
+    "total_itens": 30,
+    "total_quantidade": 450
+  },
+  "pedido_index": 1,
+  "total_pedidos": 15
+}
+```
+
 ## 🚨 Limitações
 
 1. **Período mínimo**: 7 dias
@@ -332,13 +414,27 @@ for (const filial of analisePorFilial) {
 
 - **Tabelas principais:**
   - `auditoria_integracao.auditoria_produtos_drp` (produtos)
-  - `auditoria_integracao.Estoque_DRP` (estoque)
+  - `auditoria_integracao.Estoque_DRP` (estoque + estoque mínimo antigo)
+  - `auditoria_integracao.estoque_minimo` (estoque mínimo dinâmico)
   - `auditoria_integracao.Movimentacao_DRP` (vendas)
+  - `auditoria_integracao.Pedido_DRP` (pedidos gerados)
+  - `auditoria_integracao.Pedido_DRP_Itens` (itens dos pedidos)
   - `public.Produto_Config_DRP` (múltiplos)
   - `public.Produtos_Combinado_DRP` (combinados)
   - `public.Grupo_Combinado_DRP` (grupos de combinados)
 
+- **Arquivos do código:**
+  - `backend/src/services/drp/produto.service.ts` (serviço de cálculo)
+  - `backend/src/routes/drp/produto.routes.ts` (endpoints)
+  - `backend/src/utils/drp/estoque-minimo.ts` (função compartilhada de estoque mínimo)
+  - `backend/src/utils/webhook-pedido.ts` (webhook para n8n)
+
 - **Documentação relacionada:**
+  - [Estoque Mínimo Dinâmico](../ESTOQUE_MINIMO.md)
   - [Produtos Combinados](./COMBINADOS.md)
   - [Múltiplos de Venda](./MULTIPLOS_VENDA.md)
   - [DRP por NF](./DRP_NF.md)
+
+---
+
+*Última atualização: 06/Fevereiro/2026*
