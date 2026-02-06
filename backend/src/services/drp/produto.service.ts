@@ -21,7 +21,8 @@ import {
   PRIORIDADE_FILIAIS,
   validarPeriodo,
   getFiliaisExceto,
-  buscarMultiploVenda
+  buscarMultiploVenda,
+  buscarEstoqueMinimoAtualizado
 } from '../../utils/drp'
 
 export class DRPProdutoService {
@@ -150,17 +151,17 @@ export class DRPProdutoService {
           estoqueCombinado = dadosCombinados.estoque
         }
 
-        // Buscar estoque atual e estoque mínimo na filial
+        // Buscar estoque atual na filial
         const estoqueResult = await this.pool.query(`
-          SELECT 
-            COALESCE(estoque, 0) as estoque,
-            COALESCE(estoque_minimo, 0) as estoque_minimo
+          SELECT COALESCE(estoque, 0) as estoque
           FROM auditoria_integracao."Estoque_DRP"
           WHERE cod_produto = $1 AND cod_filial = $2
         `, [codProduto, codFilial])
 
         const estoqueAtual = parseFloat(estoqueResult.rows[0]?.estoque || '0')
-        const estoqueMinimo = parseFloat(estoqueResult.rows[0]?.estoque_minimo || '0')
+        
+        // Buscar estoque mínimo dinâmico (com fallback para tabela antiga)
+        const estoqueMinimo = await buscarEstoqueMinimoAtualizado(codProduto, codFilial, this.pool)
         
         // Estoque total = estoque do produto + estoque de combinados
         const estoqueTotal = estoqueAtual + estoqueCombinado
@@ -251,8 +252,15 @@ export class DRPProdutoService {
       }
 
       // 4. Calcular alocações
-      if (necessidadeTotal > 0 && estoqueCD > 0) {
-        const estoqueParaDistribuir = Math.min(estoqueCD, necessidadeTotal)
+      // Proteção: se origem NÃO for CD, descontar estoque mínimo da origem
+      let estoqueDisponivelOrigem = estoqueCD
+      if (origemFilial !== CD_FILIAL) {
+        const estMinOrigem = await buscarEstoqueMinimoAtualizado(codProduto, origemFilial, this.pool)
+        estoqueDisponivelOrigem = Math.max(0, estoqueCD - estMinOrigem)
+      }
+
+      if (necessidadeTotal > 0 && estoqueDisponivelOrigem > 0) {
+        const estoqueParaDistribuir = Math.min(estoqueDisponivelOrigem, necessidadeTotal)
         let estoqueRestante = estoqueParaDistribuir
 
         if (estoqueParaDistribuir >= necessidadeTotal) {
@@ -299,16 +307,16 @@ export class DRPProdutoService {
       }
 
       // 5. Determinar status
-      const deficit = Math.max(0, necessidadeTotal - estoqueCD)
+      const deficit = Math.max(0, necessidadeTotal - estoqueDisponivelOrigem)
       let status: 'ok' | 'rateio' | 'deficit' = 'ok'
       let proporcaoAtendimento = 1.0
 
-      if (estoqueCD === 0) {
+      if (estoqueDisponivelOrigem === 0) {
         status = 'deficit'
         proporcaoAtendimento = 0
-      } else if (estoqueCD < necessidadeTotal) {
+      } else if (estoqueDisponivelOrigem < necessidadeTotal) {
         status = 'rateio'
-        proporcaoAtendimento = estoqueCD / necessidadeTotal
+        proporcaoAtendimento = estoqueDisponivelOrigem / necessidadeTotal
       }
 
       // Buscar grupo combinado

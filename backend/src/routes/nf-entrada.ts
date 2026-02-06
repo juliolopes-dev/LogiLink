@@ -9,40 +9,7 @@ import poolAuditoria from '../lib/database-auditoria.js'
 import prisma from '../lib/prisma'
 import * as XLSX from 'xlsx'
 import { enviarWebhookPedido } from '../utils/webhook-pedido'
-
-/**
- * Busca estoque mínimo dinâmico (novo sistema) com fallback para tabela antiga
- */
-async function buscarEstoqueMinimoAtualizado(codProduto: string, codFilial: string): Promise<number> {
-  try {
-    // 1. Tentar buscar do novo sistema (estoque mínimo dinâmico)
-    const resultadoDinamico = await poolAuditoria.query(`
-      SELECT estoque_minimo_calculado
-      FROM auditoria_integracao.estoque_minimo
-      WHERE cod_produto = $1 
-        AND cod_filial = $2
-        AND manual = false
-      ORDER BY data_calculo DESC
-      LIMIT 1
-    `, [codProduto, codFilial])
-
-    if (resultadoDinamico.rows.length > 0) {
-      return parseFloat(resultadoDinamico.rows[0].estoque_minimo_calculado || '0')
-    }
-
-    // 2. Se não encontrar, buscar da tabela antiga (fallback)
-    const resultadoAntigo = await poolAuditoria.query(`
-      SELECT COALESCE(estoque_minimo, 0) as estoque_minimo
-      FROM auditoria_integracao."Estoque_DRP"
-      WHERE cod_produto = $1 AND cod_filial = $2
-    `, [codProduto, codFilial])
-
-    return parseFloat(resultadoAntigo.rows[0]?.estoque_minimo || '0')
-  } catch (error) {
-    console.error(`Erro ao buscar estoque mínimo para ${codProduto}/${codFilial}:`, error)
-    return 0
-  }
-}
+import { buscarEstoqueMinimoAtualizado } from '../utils/drp/estoque-minimo'
 
 import { calcularFrequenciaSaida } from '../utils/drp/frequencia-saida'
 import { enviarNotificacao } from './notifications.js'
