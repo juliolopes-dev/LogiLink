@@ -392,56 +392,69 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
         total_quantidade: number
       }> = []
 
-      // Criar um pedido para cada filial que tem itens
+      const SKUS_POR_PEDIDO = 30
+
+      // Criar pedidos para cada filial, dividindo em lotes de 30 SKUs
       for (const [codFilial, itens] of Object.entries(itensPorFilial)) {
         if (itens.length === 0) continue
 
         const nomeFilial = FILIAIS_MAP[codFilial] || codFilial
-        const totalItens = itens.length
-        const totalQuantidade = itens.reduce((sum, item) => sum + item.quantidade, 0)
 
-        // Gerar número do pedido
-        const numeroPedidoResult = await poolAuditoria.query(
-          `SELECT auditoria_integracao.gerar_numero_pedido_drp($1) as numero`,
-          [codFilial]
-        )
-        const numeroPedido = numeroPedidoResult.rows[0].numero
-
-        // DRP por Produto não tem NF real
-        const nfOrigem = 'DRP-PROD'
-
-        // Inserir pedido
-        const pedidoResult = await poolAuditoria.query(`
-          INSERT INTO auditoria_integracao."Pedido_DRP" (
-            numero_pedido, numero_nf_origem, cod_filial_destino, nome_filial_destino,
-            usuario, total_itens, total_quantidade, status, cod_fornecedor, nome_fornecedor,
-            cod_filial_origem, nome_filial_origem
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', NULL, $8, $9, $10)
-          RETURNING id
-        `, [numeroPedido, nfOrigem, codFilial, nomeFilial, usuario || 'Sistema', totalItens, totalQuantidade, `DRP Produto - Origem: ${nomeOrigem}`, filial_origem, nomeOrigem])
-
-        const pedidoId = pedidoResult.rows[0].id
-
-        // Inserir itens do pedido
-        for (const item of itens) {
-          await poolAuditoria.query(`
-            INSERT INTO auditoria_integracao."Pedido_DRP_Itens" (
-              pedido_id, cod_produto, descricao_produto, quantidade,
-              tipo_calculo, necessidade_original, estoque_filial
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `, [pedidoId, item.cod_produto, item.descricao, item.quantidade,
-              item.tipo_calculo, item.necessidade_original, item.estoque_filial])
+        // Dividir itens em lotes de 30
+        const lotes: typeof itens[] = []
+        for (let i = 0; i < itens.length; i += SKUS_POR_PEDIDO) {
+          lotes.push(itens.slice(i, i + SKUS_POR_PEDIDO))
         }
 
-        pedidosCriados.push({
-          numero_pedido: numeroPedido,
-          cod_filial: codFilial,
-          nome_filial: nomeFilial,
-          total_itens: totalItens,
-          total_quantidade: totalQuantidade
-        })
+        console.log(`📦 ${nomeFilial}: ${itens.length} itens → ${lotes.length} pedido(s)`)
 
-        console.log(`✅ Pedido ${numeroPedido} criado para ${nomeFilial}: ${totalItens} itens, ${totalQuantidade} unidades`)
+        for (const lote of lotes) {
+          const totalItens = lote.length
+          const totalQuantidade = lote.reduce((sum, item) => sum + item.quantidade, 0)
+
+          // Gerar número do pedido
+          const numeroPedidoResult = await poolAuditoria.query(
+            `SELECT auditoria_integracao.gerar_numero_pedido_drp($1) as numero`,
+            [codFilial]
+          )
+          const numeroPedido = numeroPedidoResult.rows[0].numero
+
+          // DRP por Produto não tem NF real
+          const nfOrigem = 'DRP-PROD'
+
+          // Inserir pedido
+          const pedidoResult = await poolAuditoria.query(`
+            INSERT INTO auditoria_integracao."Pedido_DRP" (
+              numero_pedido, numero_nf_origem, cod_filial_destino, nome_filial_destino,
+              usuario, total_itens, total_quantidade, status, cod_fornecedor, nome_fornecedor,
+              cod_filial_origem, nome_filial_origem
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', NULL, $8, $9, $10)
+            RETURNING id
+          `, [numeroPedido, nfOrigem, codFilial, nomeFilial, usuario || 'Sistema', totalItens, totalQuantidade, `DRP Produto - Origem: ${nomeOrigem}`, filial_origem, nomeOrigem])
+
+          const pedidoId = pedidoResult.rows[0].id
+
+          // Inserir itens do pedido
+          for (const item of lote) {
+            await poolAuditoria.query(`
+              INSERT INTO auditoria_integracao."Pedido_DRP_Itens" (
+                pedido_id, cod_produto, descricao_produto, quantidade,
+                tipo_calculo, necessidade_original, estoque_filial
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [pedidoId, item.cod_produto, item.descricao, item.quantidade,
+                item.tipo_calculo, item.necessidade_original, item.estoque_filial])
+          }
+
+          pedidosCriados.push({
+            numero_pedido: numeroPedido,
+            cod_filial: codFilial,
+            nome_filial: nomeFilial,
+            total_itens: totalItens,
+            total_quantidade: totalQuantidade
+          })
+
+          console.log(`✅ Pedido ${numeroPedido} criado para ${nomeFilial}: ${totalItens} itens, ${totalQuantidade} unidades`)
+        }
       }
 
       // Enviar webhook para n8n (fire and forget)

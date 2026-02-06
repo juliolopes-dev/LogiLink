@@ -1814,7 +1814,7 @@ export default function AnaliseDRP() {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        produtos: produtos,
+                        produtos: todosProdutos,
                         usuario: 'Sistema',
                         filial_origem: filialOrigem
                       })
