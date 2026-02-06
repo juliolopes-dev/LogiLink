@@ -5,7 +5,7 @@
 
 const WEBHOOK_URL = 'https://n8n-n8n.tbs25p.easypanel.host/webhook/197fdaf9-a28c-4e34-ba63-1fd37a79523b'
 
-interface PedidoWebhook {
+interface PedidoResumo {
   numero_pedido: string
   cod_filial: string
   nome_filial: string
@@ -22,12 +22,9 @@ interface DadosWebhookPedido {
   fornecedor?: string | null
   usuario: string
   data: string
-  pedido: PedidoWebhook
-  pedido_index: number
   total_pedidos: number
+  pedidos: PedidoResumo[]
 }
-
-const DELAY_ENTRE_WEBHOOKS = 2000 // 2 segundos entre cada disparo
 
 /**
  * Retorna data/hora atual no fuso horário de Brasília (UTC-3)
@@ -44,12 +41,8 @@ function getDataBrasil(): string {
   })
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 /**
- * Envia 1 webhook por pedido com delay de 500ms entre cada disparo
+ * Envia 1 único webhook com a lista resumida de todos os pedidos gerados
  * Não bloqueia nem lança erro se falhar (fire and forget)
  */
 export async function enviarWebhookPedido(dados: {
@@ -59,49 +52,38 @@ export async function enviarWebhookPedido(dados: {
   nome_filial_origem: string
   fornecedor?: string | null
   usuario: string
-  pedidos: PedidoWebhook[]
+  pedidos: PedidoResumo[]
 }): Promise<void> {
-  const dataBrasil = getDataBrasil()
   const totalPedidos = dados.pedidos.length
 
-  console.log(`📡 Enviando ${totalPedidos} webhook(s) pedido DRP (${dados.origem})...`)
+  console.log(`📡 Enviando webhook com ${totalPedidos} pedido(s) DRP (${dados.origem})...`)
 
-  for (let i = 0; i < totalPedidos; i++) {
-    try {
-      const payload: DadosWebhookPedido = {
-        tipo: 'pedido_drp',
-        origem: dados.origem,
-        numero_nf_origem: dados.numero_nf_origem,
-        filial_origem: dados.filial_origem,
-        nome_filial_origem: dados.nome_filial_origem,
-        fornecedor: dados.fornecedor || null,
-        usuario: dados.usuario,
-        data: dataBrasil,
-        pedido: dados.pedidos[i],
-        pedido_index: i + 1,
-        total_pedidos: totalPedidos
-      }
-
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-
-      if (response.ok) {
-        console.log(`✅ Webhook ${i + 1}/${totalPedidos} enviado: ${dados.pedidos[i].numero_pedido}`)
-      } else {
-        console.error(`⚠️ Webhook ${i + 1}/${totalPedidos} retornou status ${response.status}`)
-      }
-
-      // Delay entre disparos (exceto no último)
-      if (i < totalPedidos - 1) {
-        await delay(DELAY_ENTRE_WEBHOOKS)
-      }
-    } catch (error) {
-      console.error(`⚠️ Erro webhook ${i + 1}/${totalPedidos} (não bloqueante):`, error)
+  try {
+    const payload: DadosWebhookPedido = {
+      tipo: 'pedido_drp',
+      origem: dados.origem,
+      numero_nf_origem: dados.numero_nf_origem,
+      filial_origem: dados.filial_origem,
+      nome_filial_origem: dados.nome_filial_origem,
+      fornecedor: dados.fornecedor || null,
+      usuario: dados.usuario,
+      data: getDataBrasil(),
+      total_pedidos: totalPedidos,
+      pedidos: dados.pedidos
     }
-  }
 
-  console.log(`📡 ${totalPedidos} webhook(s) finalizados`)
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (response.ok) {
+      console.log(`✅ Webhook enviado com sucesso: ${totalPedidos} pedido(s)`)
+    } else {
+      console.error(`⚠️ Webhook retornou status ${response.status}`)
+    }
+  } catch (error) {
+    console.error(`⚠️ Erro webhook (não bloqueante):`, error)
+  }
 }
