@@ -27,7 +27,7 @@ interface DadosWebhookPedido {
   total_pedidos: number
 }
 
-const DELAY_ENTRE_WEBHOOKS = 500 // 500ms entre cada disparo
+const DELAY_ENTRE_WEBHOOKS = 2000 // 2 segundos entre cada disparo
 
 /**
  * Retorna data/hora atual no fuso horário de Brasília (UTC-3)
