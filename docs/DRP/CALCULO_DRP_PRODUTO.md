@@ -224,29 +224,44 @@ if (origemFilial !== CD_FILIAL) {
 - **`rateio`**: Estoque disponível < necessidade total (distribui proporcionalmente)
 - **`deficit`**: Estoque disponível = 0 (não pode distribuir)
 
-### 7. Distribuição quando Estoque Insuficiente (Rateio)
+### 7. Distribuição quando Estoque Insuficiente (Rateio com Peso ABC)
 
-Quando o estoque disponível é menor que a necessidade total, a distribuição é **proporcional à necessidade de cada filial**:
+Quando o estoque disponível é menor que a necessidade total, a distribuição é **proporcional à necessidade ponderada pela classe ABC** de cada filial:
+
+**Pesos por classe:**
+| Classe | Peso | Efeito |
+|--------|------|--------|
+| **A** | 1.3 | +30% de prioridade |
+| **B** | 1.0 | Neutro (padrão para produtos sem classificação) |
+| **C** | 0.7 | -30% de prioridade |
 
 ```typescript
-// Cada filial recebe proporcionalmente à sua necessidade
+// Calcular necessidade ponderada por classe ABC
 for (const filial of analisePorFilial) {
-  if (filial.necessidade > 0) {
-    const proporcao = filial.necessidade / necessidadeTotal
-    const alocacao = estoqueParaDistribuir * proporcao
-    filial.alocacao_sugerida = arredondarMultiplo(alocacao, multiploVenda)
-  }
+  const peso = PESO_ABC[filial.classe_abc || 'B']
+  necessidadePonderada += filial.necessidade * peso
+}
+
+// Distribuir proporcionalmente ao peso
+for (const filial of analisePorFilial) {
+  const peso = PESO_ABC[filial.classe_abc || 'B']
+  const proporcao = (filial.necessidade * peso) / necessidadePonderadaTotal
+  filial.alocacao_sugerida = arredondarMultiplo(estoqueParaDistribuir * proporcao, multiploVenda)
 }
 ```
 
 **Exemplo:**
-- Estoque CD: 30 unidades
-- Necessidade Total: 50 unidades
-- Petrolina precisa: 20 (40%) → recebe 12 (40% de 30)
-- Juazeiro precisa: 15 (30%) → recebe 9 (30% de 30)
-- Salgueiro precisa: 15 (30%) → recebe 9 (30% de 30)
+- Estoque CD: 30 unidades | Necessidade Total: 50 unidades
 
-**Vantagem:** Distribuição justa - todas as filiais recebem proporcionalmente ao que precisam.
+| Filial | Classe | Necessidade | Peso | Nec × Peso | **Sem ABC** | **Com ABC** |
+|--------|--------|-------------|------|------------|-------------|-------------|
+| Petrolina | **A** | 20 | 1.3 | 26 | 12 (40%) | **14** (43%) |
+| Juazeiro | **C** | 15 | 0.7 | 10.5 | 9 (30%) | **7** (25%) |
+| Salgueiro | **B** | 15 | 1.0 | 15 | 9 (30%) | **9** (32%) |
+
+**Vantagem:** Filiais onde o produto é classe A (alta rotatividade) recebem mais estoque no rateio, reduzindo risco de falta dos produtos mais vendidos.
+
+> **Nota:** A classificação ABC vem da tabela `estoque_minimo` (coluna `classe_abc`). Produtos sem classificação são tratados como classe B (peso neutro). Quando o estoque é suficiente (status `ok`), o peso ABC **não é aplicado** — cada filial recebe exatamente o que precisa.
 
 ## 📊 Exemplos
 
@@ -414,7 +429,7 @@ Após gerar os pedidos, o sistema envia **1 único webhook** para o n8n com a li
 - **Tabelas principais:**
   - `auditoria_integracao.auditoria_produtos_drp` (produtos)
   - `auditoria_integracao.Estoque_DRP` (estoque + estoque mínimo antigo)
-  - `auditoria_integracao.estoque_minimo` (estoque mínimo dinâmico)
+  - `auditoria_integracao.estoque_minimo` (estoque mínimo dinâmico + classificação ABC)
   - `auditoria_integracao.Movimentacao_DRP` (vendas)
   - `auditoria_integracao.Pedido_DRP` (pedidos gerados)
   - `auditoria_integracao.Pedido_DRP_Itens` (itens dos pedidos)
@@ -426,6 +441,7 @@ Após gerar os pedidos, o sistema envia **1 único webhook** para o n8n com a li
   - `backend/src/services/drp/produto.service.ts` (serviço de cálculo)
   - `backend/src/routes/drp/produto.routes.ts` (endpoints)
   - `backend/src/utils/drp/estoque-minimo.ts` (função compartilhada de estoque mínimo)
+  - `backend/src/utils/drp/classificacao-abc.ts` (classificação ABC e pesos para rateio)
   - `backend/src/utils/webhook-pedido.ts` (webhook para n8n)
 
 - **Documentação relacionada:**

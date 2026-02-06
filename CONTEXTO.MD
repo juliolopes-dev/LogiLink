@@ -37,6 +37,13 @@
 - **Outras filiais:** Reserva o estoque mínimo dinâmico antes de distribuir
 - Exemplo: Petrolina com 50 de estoque e 20 de est. mínimo → distribui apenas 30
 
+### 8. Classificação ABC no Rateio
+- Quando estoque é insuficiente (rateio), a distribuição usa **peso ABC por filial**
+- Classe A: peso 1.3 (+30%), Classe B: peso 1.0 (neutro), Classe C: peso 0.7 (-30%)
+- Produtos sem classificação ABC são tratados como classe B (neutro)
+- Quando estoque é suficiente (status `ok`), peso ABC **não é aplicado**
+- Arquivo: `backend/src/utils/drp/classificacao-abc.ts`
+
 ---
 
 ## 📁 Arquivos Alterados
@@ -47,7 +54,9 @@
 | `backend/src/utils/drp/estoque-minimo.ts` | **NOVO** — Função compartilhada estoque mínimo dinâmico |
 | `backend/src/utils/drp/index.ts` | Export da nova função |
 | `backend/src/utils/webhook-pedido.ts` | Webhook resumido (1 disparo com lista de pedidos) |
-| `backend/src/services/drp/produto.service.ts` | Estoque mínimo dinâmico + proteção filial origem |
+| `backend/src/utils/drp/classificacao-abc.ts` | **NOVO** — Classificação ABC e pesos para rateio |
+| `backend/src/types/drp/comum.ts` | Campo `classe_abc` na interface `FilialAnalise` |
+| `backend/src/services/drp/produto.service.ts` | Estoque mínimo dinâmico + proteção filial origem + rateio ABC |
 | `backend/src/routes/drp/produto.routes.ts` | Lotes 30 SKUs + filial origem no INSERT |
 | `backend/src/routes/nf-entrada.ts` | Import função compartilhada + filial origem no INSERT |
 | `frontend/src/pages/AnaliseDRP.tsx` | Enviar todosProdutos ao gerar pedidos |
@@ -68,9 +77,10 @@
 - Deploy e teste de geração de pedidos
 
 ## ⏭️ Próximos Passos
+- Fazer deploy e testar rateio ABC (comparar distribuição com produto em rateio)
 - Verificar se webhook resumido chega corretamente no n8n
 - Testar proteção da filial de origem selecionando uma filial diferente do CD
-- Testar estoque mínimo dinâmico comparando valores com o sistema antigo
+- Mostrar classe ABC no frontend (badge A/B/C por filial)
 
 ---
 
