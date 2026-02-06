@@ -406,9 +406,8 @@ export default async function drpProdutoRoutes(fastify: FastifyInstance) {
         )
         const numeroPedido = numeroPedidoResult.rows[0].numero
 
-        // Gerar identificador para numero_nf_origem (DRP por Produto não tem NF real)
-        const agora = new Date()
-        const nfOrigem = `DRP-PROD-${agora.getFullYear()}${String(agora.getMonth() + 1).padStart(2, '0')}${String(agora.getDate()).padStart(2, '0')}-${String(agora.getHours()).padStart(2, '0')}${String(agora.getMinutes()).padStart(2, '0')}${String(agora.getSeconds()).padStart(2, '0')}`
+        // DRP por Produto não tem NF real
+        const nfOrigem = 'DRP-PROD'
 
         // Inserir pedido
         const pedidoResult = await poolAuditoria.query(`
