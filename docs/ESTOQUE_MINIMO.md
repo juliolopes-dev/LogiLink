@@ -566,7 +566,7 @@ O estoque mínimo dinâmico está integrado em **ambos os tipos de DRP** atravé
 // 1º - Busca do NOVO sistema dinâmico (tabela estoque_minimo)
 SELECT estoque_minimo_calculado
 FROM auditoria_integracao.estoque_minimo
-WHERE cod_produto = $1 AND cod_filial = $2 AND manual = false
+WHERE cod_produto = $1 AND cod_filial = $2 AND metodo = 'automatico'
 ORDER BY data_calculo DESC LIMIT 1
 
 // 2º - Se não encontrar, busca da tabela ANTIGA (fallback)

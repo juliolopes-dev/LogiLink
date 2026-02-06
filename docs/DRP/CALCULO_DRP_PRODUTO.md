@@ -358,7 +358,7 @@ Tabela `Pedido_DRP`:
 
 ### Webhook (n8n)
 
-Após gerar os pedidos, o sistema envia **1 webhook por pedido** para o n8n com delay de 2 segundos entre cada disparo:
+Após gerar os pedidos, o sistema envia **1 único webhook** para o n8n com a lista resumida de todos os pedidos gerados:
 
 ```json
 {
@@ -366,15 +366,14 @@ Após gerar os pedidos, o sistema envia **1 webhook por pedido** para o n8n com 
   "origem": "DRP-PROD",
   "filial_origem": "04",
   "nome_filial_origem": "CD",
-  "pedido": {
-    "numero_pedido": "PED-00-0001",
-    "cod_filial": "00",
-    "nome_filial": "Petrolina",
-    "total_itens": 30,
-    "total_quantidade": 450
-  },
-  "pedido_index": 1,
-  "total_pedidos": 15
+  "usuario": "admin",
+  "data": "06/02/2026, 15:00:00",
+  "total_pedidos": 3,
+  "pedidos": [
+    { "numero_pedido": "PED-00-0001", "cod_filial": "00", "nome_filial": "Petrolina", "total_itens": 30, "total_quantidade": 450 },
+    { "numero_pedido": "PED-00-0002", "cod_filial": "00", "nome_filial": "Petrolina", "total_itens": 20, "total_quantidade": 280 },
+    { "numero_pedido": "PED-01-0001", "cod_filial": "01", "nome_filial": "Juazeiro", "total_itens": 25, "total_quantidade": 200 }
+  ]
 }
 ```
 

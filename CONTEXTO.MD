@@ -20,10 +20,10 @@
 - Pedidos DRP por Produto agora são divididos em lotes de **30 SKUs** por filial
 - Exemplo: Petrolina com 80 itens → 3 pedidos (30 + 30 + 20)
 
-### 4. Webhook Individual por Pedido
-- Antes: 1 disparo com todos os pedidos no array
-- Agora: **1 disparo por pedido** com delay de **2 segundos** entre cada
-- Campos extras: `pedido_index` e `total_pedidos` para rastreamento
+### 4. Webhook Resumido
+- Antes: 1 disparo por pedido com delay de 2 segundos entre cada
+- Agora: **1 único disparo** com lista resumida de todos os pedidos gerados
+- Campos: `total_pedidos` + array `pedidos` (numero_pedido, cod_filial, nome_filial, total_itens, total_quantidade)
 
 ### 5. Estoque Mínimo Dinâmico no DRP por Produto
 - **Antes:** DRP por Produto usava apenas tabela antiga `Estoque_DRP.estoque_minimo`
@@ -46,7 +46,7 @@
 | `backend/scripts/adicionar-filial-origem-pedido-drp.ts` | **NOVO** — Script migração colunas filial origem |
 | `backend/src/utils/drp/estoque-minimo.ts` | **NOVO** — Função compartilhada estoque mínimo dinâmico |
 | `backend/src/utils/drp/index.ts` | Export da nova função |
-| `backend/src/utils/webhook-pedido.ts` | Webhook individual por pedido + delay 2s |
+| `backend/src/utils/webhook-pedido.ts` | Webhook resumido (1 disparo com lista de pedidos) |
 | `backend/src/services/drp/produto.service.ts` | Estoque mínimo dinâmico + proteção filial origem |
 | `backend/src/routes/drp/produto.routes.ts` | Lotes 30 SKUs + filial origem no INSERT |
 | `backend/src/routes/nf-entrada.ts` | Import função compartilhada + filial origem no INSERT |
@@ -56,13 +56,19 @@
 
 ---
 
+### 7. Correções de Bugs
+- **Coluna `manual` inexistente** → corrigido para `metodo = 'automatico'` na query de estoque mínimo
+- **Payload Too Large** → `bodyLimit` aumentado para 50MB na rota `/api/drp/gerar-pedidos`
+
+---
+
 ## 🧪 O que foi testado
 - Script de migração executado com sucesso (29 registros atualizados)
 - Commits e push realizados sem erros
+- Deploy e teste de geração de pedidos
 
 ## ⏭️ Próximos Passos
-- Fazer deploy na VPS e testar geração de pedidos DRP por Produto
-- Verificar se webhook chega corretamente no n8n (1 por pedido)
+- Verificar se webhook resumido chega corretamente no n8n
 - Testar proteção da filial de origem selecionando uma filial diferente do CD
 - Testar estoque mínimo dinâmico comparando valores com o sistema antigo
 
