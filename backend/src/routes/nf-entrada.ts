@@ -832,8 +832,9 @@ export async function nfEntradaRoutes(fastify: FastifyInstance) {
         const pedidoResult = await poolAuditoria.query(`
           INSERT INTO auditoria_integracao."Pedido_DRP" (
             numero_pedido, numero_nf_origem, cod_filial_destino, nome_filial_destino,
-            usuario, total_itens, total_quantidade, status, cod_fornecedor, nome_fornecedor
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9)
+            usuario, total_itens, total_quantidade, status, cod_fornecedor, nome_fornecedor,
+            cod_filial_origem, nome_filial_origem
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9, '04', 'CD')
           RETURNING id
         `, [numeroPedido, numero_nota, codFilial, nomeFilial, usuario || 'Sistema', totalItens, totalQuantidade, codFornecedor, nomeFornecedor])
 
