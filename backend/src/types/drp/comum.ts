@@ -18,6 +18,7 @@ export interface FilialAnalise {
   desvio_padrao?: number
   coeficiente_variacao?: number
   tem_pico?: boolean
+  classe_abc?: 'A' | 'B' | 'C'
   usou_combinado?: boolean
   usou_estoque_minimo?: boolean
   tem_combinado_estoque?: boolean

@@ -22,7 +22,11 @@ import {
   validarPeriodo,
   getFiliaisExceto,
   buscarMultiploVenda,
-  buscarEstoqueMinimoAtualizado
+  buscarEstoqueMinimoAtualizado,
+  carregarClassificacaoABC,
+  getClasseABC,
+  PESO_ABC,
+  CacheClasseABC
 } from '../../utils/drp'
 
 export class DRPProdutoService {
@@ -50,10 +54,14 @@ export class DRPProdutoService {
 
     console.log(`🔍 Calculando DRP para ${periodo_dias} dias - processando TODOS os produtos...`)
 
-    // 1. Carregar todos os combinados em memória
-    console.log('📦 Carregando combinados...')
-    const mapas = await carregarCombinados(this.pool)
+    // 1. Carregar todos os combinados e classificação ABC em memória
+    console.log('📦 Carregando combinados e classificação ABC...')
+    const [mapas, cacheABC] = await Promise.all([
+      carregarCombinados(this.pool),
+      carregarClassificacaoABC(filiais, this.pool)
+    ])
     console.log(`✅ ${mapas.grupoParaProdutos.size} grupos de combinados carregados`)
+    console.log(`✅ Classificação ABC carregada para ${filiais.length} filiais`)
 
     // 2. Buscar TODOS os produtos ativos COM ESTOQUE na filial origem
     let whereProduto = `
@@ -233,6 +241,9 @@ export class DRPProdutoService {
           }
         }
 
+        // Buscar classe ABC do produto nesta filial
+        const classeABC = getClasseABC(cacheABC, codProduto, codFilial)
+
         analisePorFilial.push({
           cod_filial: codFilial,
           nome: nomeFilial,
@@ -242,6 +253,7 @@ export class DRPProdutoService {
           meta,
           necessidade,
           alocacao_sugerida: 0,
+          classe_abc: classeABC,
           usou_combinado: usouCombinado,
           usou_estoque_minimo: usouEstoqueMinimo,
           tem_combinado_estoque: temCombinadoEstoque,
@@ -295,10 +307,20 @@ export class DRPProdutoService {
             distribuirRestante(alocacoes, restante, PRIORIDADE_FILIAIS)
           }
         } else {
-          // Estoque insuficiente: rateio proporcional
+          // Estoque insuficiente: rateio proporcional com peso ABC
+          // Classe A recebe +30%, B neutro, C recebe -30%
+          let necessidadePonderadaTotal = 0
           for (const filial of analisePorFilial) {
             if (filial.necessidade > 0) {
-              const proporcao = filial.necessidade / necessidadeTotal
+              const peso = PESO_ABC[filial.classe_abc || 'B']
+              necessidadePonderadaTotal += filial.necessidade * peso
+            }
+          }
+
+          for (const filial of analisePorFilial) {
+            if (filial.necessidade > 0) {
+              const peso = PESO_ABC[filial.classe_abc || 'B']
+              const proporcao = (filial.necessidade * peso) / necessidadePonderadaTotal
               const alocacao = estoqueParaDistribuir * proporcao
               filial.alocacao_sugerida = arredondarMultiplo(alocacao, multiploVenda)
             }
