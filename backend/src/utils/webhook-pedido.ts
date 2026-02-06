@@ -3,7 +3,7 @@
  * Envia dados do pedido para o n8n via POST
  */
 
-const WEBHOOK_URL = 'https://n8n-n8n.tbs25p.easypanel.host/webhook-test/41d57072-8c26-487c-ba5a-0e751060e8fe'
+const WEBHOOK_URL = 'https://n8n-n8n.tbs25p.easypanel.host/webhook/41d57072-8c26-487c-ba5a-0e751060e8fe'
 
 interface PedidoWebhook {
   numero_pedido: string
