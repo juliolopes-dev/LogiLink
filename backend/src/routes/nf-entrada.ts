@@ -7,6 +7,7 @@ import {
 } from '../lib/database-auditoria.js'
 import poolAuditoria from '../lib/database-auditoria.js'
 import prisma from '../lib/prisma'
+import * as XLSX from 'xlsx'
 
 /**
  * Busca estoque mínimo dinâmico (novo sistema) com fallback para tabela antiga
